@@ -1,18 +1,74 @@
 "use client";
 
-import { channel } from "diagnostics_channel";
 import { useEffect, useMemo, useState } from "react";
 
 type Member = { id: number; name: string; pin: string };
 
+type VaultDirection = "ENTRADA" | "SAIDA";
+type VaultLog = {
+  id: string;
+  when: string;
+  direction: VaultDirection;
+  item: string;
+  qty: number;
+  where: string;
+  obs: string;
+  by: string;
+};
+
+type OrderKind = "EXTERNO" | "INTERNO";
+type OrderStatus = "ABERTO" | "ANDAMENTO" | "FINALIZADO" | "CANCELADO";
+type Order = {
+  id: string;
+  when: string;
+  kind: OrderKind;
+  item: string;
+  qty: number;
+  party: string;
+  status: OrderStatus;
+  notes: string;
+  by: string;
+};
+
+type WebhookChannel = "vault" | "orders";
+
 const CLUB_PASSWORD = "jgcalvo";
+
 const MEMBERS: Member[] = [
   { id: 1, name: "DRK", pin: "1111" },
   { id: 2, name: "OVER", pin: "2222" },
   { id: 3, name: "SLX", pin: "3333" },
 ];
-const ORDER_ALLOWED_IDS = new Set<number>([1, 2]); // EX: DRK e OVER
 
+const ORDER_ALLOWED_IDS = new Set<number>([1, 2]);
+
+function nowBR(): string {
+  return new Date().toLocaleString();
+}
+
+function vaultTitle(direction: VaultDirection): string {
+  return direction === "ENTRADA" ? "ENTRADA" : "SAÍDA";
+}
+
+function vaultColor(direction: VaultDirection): number {
+  return direction === "ENTRADA" ? 5763719 : 15548997;
+}
+
+function orderColor(kind: OrderKind): number {
+  return kind === "EXTERNO" ? 3447003 : 10181046;
+}
+
+async function postWebhook(channel: WebhookChannel, payload: unknown) {
+  try {
+    await fetch("/api/webhook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel, payload }),
+    });
+  } catch {
+    // silencioso por enquanto (MVP)
+  }
+}
 
 export default function Home() {
   const [clubPass, setClubPass] = useState("");
@@ -21,40 +77,32 @@ export default function Home() {
   const [loggedMember, setLoggedMember] = useState<Member | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // ======= BAÚ ========
-  const [vaultWhere, setVaultWhere] = useState("");
-  const [vaultObs, setVaultObs] = useState("");
-  const [vaultDirection, setVaultDirection] =
-    useState<"ENTRADA" | "SAIDA">("ENTRADA");
+  // Baú
+  const [vaultDirection, setVaultDirection] = useState<VaultDirection>("ENTRADA");
   const [vaultItem, setVaultItem] = useState("");
   const [vaultQty, setVaultQty] = useState<number>(1);
-  const [vaultLogs, setVaultLogs] = useState<any[]>([]);
+  const [vaultWhere, setVaultWhere] = useState("");
+  const [vaultObs, setVaultObs] = useState("");
+  const [vaultLogs, setVaultLogs] = useState<VaultLog[]>([]);
 
-  // ======= PEDIDOS ========
-  const [orderKind, setOrderKind] = useState<"EXTERNO" | "INTERNO">("EXTERNO");
+  // Pedidos
+  const [orderKind, setOrderKind] = useState<OrderKind>("EXTERNO");
   const [orderItem, setOrderItem] = useState("");
   const [orderQty, setOrderQty] = useState<number>(1);
   const [orderParty, setOrderParty] = useState("");
-  const [orderStatus, setOrderStatus] =
-    useState<"ABERTO" | "ANDAMENTO" | "FINALIZADO" | "CANCELADO">("ABERTO");
+  const [orderStatus, setOrderStatus] = useState<OrderStatus>("ABERTO");
   const [orderNotes, setOrderNotes] = useState("");
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("loggedMember");
-    if (saved) {
-      setLoggedMember(JSON.parse(saved));
-    }
+    const savedMember = localStorage.getItem("loggedMember");
+    if (savedMember) setLoggedMember(JSON.parse(savedMember));
 
     const savedVault = localStorage.getItem("vaultLogs");
-    if (savedVault) {
-      setVaultLogs(JSON.parse(savedVault));
-    }
+    if (savedVault) setVaultLogs(JSON.parse(savedVault));
 
     const savedOrders = localStorage.getItem("orders");
-    if (savedOrders) {
-      setOrders(JSON.parse(savedOrders));
-    }
+    if (savedOrders) setOrders(JSON.parse(savedOrders));
   }, []);
 
   useEffect(() => {
@@ -69,133 +117,6 @@ export default function Home() {
     () => MEMBERS.find((m) => m.id === memberId)!,
     [memberId]
   );
-
-  function addVaultLog(e: React.FormEvent) {
-    e.preventDefault();
-    if (!loggedMember) return;
-
-    const newLog = {
-      id: crypto.randomUUID(),
-      when: new Date().toLocaleString(),
-      direction: vaultDirection,
-      item: vaultItem,
-      qty: vaultQty,
-      where: vaultWhere,
-      obs: vaultObs,
-      by: loggedMember.name,
-    };
-
-    setVaultLogs((prev) => [newLog, ...prev]);
-    const tipo = vaultDirection === "ENTRADA" ? "ENTRADA" : "SAÍDA";
-    const label = vaultDirection === "ENTRADA" ? "Entrada" : "Saída";
-
-    fetch("/api/webhook", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        channel: "vault",
-        payload: {
-          embeds: [
-            {
-              title: `📦 BAÚ (${tipo})`,
-              color: vaultDirection === "ENTRADA" ? 5763719 : 15548997,
-              fields: [
-                {
-                  name: "⠀",
-                  value: `**👤 NOME:** ${loggedMember.name}`,
-                  inline: true,
-                },
-                {
-                  name: "⠀",
-                  value: `**📦 ITEM:** ${vaultItem}`,
-                  inline: true,
-                },
-                {
-                  name: "⠀",
-                  value: `** 🔢 QUANTIDADE:** ${vaultQty}`,
-                  inline: true,
-                },
-                {
-                  name: "📍 ONDE:",
-                  value: vaultWhere || "-",
-                  inline: false,
-                },
-                {
-                  name: "📝 OBS:",
-                  value: vaultObs || "-",
-                  inline: false,
-                },
-              ],
-            },
-          ],
-        },
-      }),
-    });
-
-
-
-
-
-    setVaultItem("");
-    setVaultQty(1);
-    setVaultWhere("");
-    setVaultObs("");
-  }
-
-  function addOrder(e: React.FormEvent) {
-    e.preventDefault();
-    if (!loggedMember) return;
-
-    if (!ORDER_ALLOWED_IDS.has(loggedMember.id)) {
-      alert("Você não tem permissão para registrar pedidos.");
-      return;
-    }
-
-    const newOrder = {
-      id: crypto.randomUUID(),
-      when: new Date().toLocaleString(),
-      kind: orderKind,
-      item: orderItem,
-      qty: orderQty,
-      party: orderParty,
-      status: orderStatus,
-      notes: orderNotes,
-      by: loggedMember.name,
-    };
-
-    setOrders((prev) => [newOrder, ...prev]);
-    fetch("/api/webhook", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        channel: "orders",
-        payload: {
-          embeds: [
-            {
-              title: `🧾 PEDIDO (${orderKind})`,
-              color: orderKind === "EXTERNO" ? 3447003 : 10181046,
-              fields: [
-                { name: "⠀", value: `**👤 NOME:** ${loggedMember.name}`, inline: true },
-                { name: "⠀", value: `**📦 ITEM:** ${orderItem}`, inline: true },
-                { name: "⠀", value: `** 🔢 QUANTIDADE:** ${orderQty}`, inline: true },
-
-                { name: "📌 STATUS:", value: orderStatus, inline: false },
-                { name: "📝 OBS:", value: orderNotes || "-", inline: false },
-              ],
-            },
-          ],
-        },
-      }),
-    });
-
-
-
-    setOrderItem("");
-    setOrderQty(1);
-    setOrderParty("");
-    setOrderStatus("ABERTO");
-    setOrderNotes("");
-  }
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -224,28 +145,118 @@ export default function Home() {
     setClubPass("");
     setPin("");
     setError(null);
+
+    setVaultLogs([]);
+    setOrders([]);
+  }
+
+  async function addVaultLog(e: React.FormEvent) {
+    e.preventDefault();
+    if (!loggedMember) return;
+
+    if (!vaultItem.trim()) return;
+
+    const log: VaultLog = {
+      id: crypto.randomUUID(),
+      when: nowBR(),
+      direction: vaultDirection,
+      item: vaultItem.trim(),
+      qty: vaultQty,
+      where: vaultWhere.trim(),
+      obs: vaultObs.trim(),
+      by: loggedMember.name,
+    };
+
+    setVaultLogs((prev) => [log, ...prev]);
+
+    await postWebhook("vault", {
+      embeds: [
+        {
+          title: `📦 BAÚ (${vaultTitle(vaultDirection)})`,
+          color: vaultColor(vaultDirection),
+          fields: [
+            { name: "⠀", value: `**👤 NOME:** ${loggedMember.name}`, inline: true },
+            { name: "⠀", value: `**📦 ITEM:** ${log.item}`, inline: true },
+            { name: "⠀", value: `**🔢 QUANTIDADE:** ${log.qty}`, inline: true },
+            { name: "📍 ONDE:", value: log.where || "-", inline: false },
+            { name: "📝 OBS:", value: log.obs || "-", inline: false },
+          ],
+        },
+      ],
+    });
+
+    setVaultItem("");
+    setVaultQty(1);
+    setVaultWhere("");
+    setVaultObs("");
+  }
+
+  async function addOrder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!loggedMember) return;
+
+    if (!ORDER_ALLOWED_IDS.has(loggedMember.id)) {
+      alert("Você não tem permissão para registrar pedidos.");
+      return;
+    }
+
+    if (!orderItem.trim()) return;
+
+    const order: Order = {
+      id: crypto.randomUUID(),
+      when: nowBR(),
+      kind: orderKind,
+      item: orderItem.trim(),
+      qty: orderQty,
+      party: orderParty.trim(),
+      status: orderStatus,
+      notes: orderNotes.trim(),
+      by: loggedMember.name,
+    };
+
+    setOrders((prev) => [order, ...prev]);
+
+    await postWebhook("orders", {
+      embeds: [
+        {
+          title: `🧾 PEDIDO (${order.kind})`,
+          color: orderColor(order.kind),
+          fields: [
+            { name: "⠀", value: `**👤 NOME:** ${loggedMember.name}`, inline: true },
+            { name: "⠀", value: `**📦 ITEM:** ${order.item}`, inline: true },
+            { name: "⠀", value: `**🔢 QUANTIDADE:** ${order.qty}`, inline: true },
+            { name: "🏷️ PARTE:", value: order.party || "-", inline: false },
+            { name: "📌 STATUS:", value: order.status, inline: false },
+            { name: "📝 OBS:", value: order.notes || "-", inline: false },
+          ],
+        },
+      ],
+    });
+
+    setOrderItem("");
+    setOrderQty(1);
+    setOrderParty("");
+    setOrderStatus("ABERTO");
+    setOrderNotes("");
   }
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
-      {/* AUMENTEI A LARGURA MÁXIMA */}
       <div className="relative overflow-hidden w-full max-w-5xl rounded-2xl border border-white/15 bg-white/5 p-6 shadow">
         <h1 className="text-2xl font-semibold">ANGELS OF CODES</h1>
-        {/* LOGO FANTASMA BACKGROUND */}
+
         <img
           src="/logo-angels.png"
           alt=""
-          className="pointer-events-none select-none absolute right-[-120px] top-1/2 -translate-y-1/2 opacity-3 w-[520px] lg:w-[700px]"
+          className="pointer-events-none select-none absolute right-[-120px] top-1/2 -translate-y-1/2 opacity-[0.03] w-[520px] lg:w-[700px]"
         />
+
         <p className="text-sm text-white/70 mt-1">
           (MVP) Login por senha do clube + Membro + PIN
         </p>
 
         {!loggedMember ? (
-
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-
-            {/* FORM LOGIN */}
             <form onSubmit={handleLogin} className="space-y-4 max-w-md">
               <div>
                 <label className="block text-sm text-white/80">Senha do clube</label>
@@ -296,17 +307,13 @@ export default function Home() {
               </button>
             </form>
           </div>
-
         ) : (
           <div className="mt-6 space-y-6">
-            {/* Cabeçalho logado + sair */}
             <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-3">
               <div>
                 <div className="text-sm text-white/70">Logado como</div>
                 <div className="text-lg font-semibold">{loggedMember.name}</div>
-                <div className="text-xs text-white/60">
-                  ID: {loggedMember.id}
-                </div>
+                <div className="text-xs text-white/60">ID: {loggedMember.id}</div>
               </div>
 
               <button
@@ -317,9 +324,7 @@ export default function Home() {
               </button>
             </div>
 
-            {/* GRID: BAÚ MAIS LARGO + PEDIDOS AO LADO */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* 📦 BAÚ (2/3 da largura no desktop) */}
               <section className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
                 <h2 className="text-lg font-semibold">📦 Log do Baú</h2>
 
@@ -328,7 +333,7 @@ export default function Home() {
                     <label className="block text-sm text-white/80">Tipo</label>
                     <select
                       value={vaultDirection}
-                      onChange={(e) => setVaultDirection(e.target.value as any)}
+                      onChange={(e) => setVaultDirection(e.target.value as VaultDirection)}
                       className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
                     >
                       <option value="ENTRADA">ENTRADA</option>
@@ -347,9 +352,7 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-white/80">
-                      Quantidade
-                    </label>
+                    <label className="block text-sm text-white/80">Quantidade</label>
                     <input
                       type="number"
                       min={1}
@@ -374,7 +377,7 @@ export default function Home() {
                     <input
                       value={vaultObs}
                       onChange={(e) => setVaultObs(e.target.value)}
-                      placeholder="Ex: *Devolver pra ele*"
+                      placeholder="Ex: Devolver pra ele"
                       className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
                     />
                   </div>
@@ -386,9 +389,7 @@ export default function Home() {
 
                 <div className="mt-4 space-y-2">
                   {vaultLogs.length === 0 ? (
-                    <div className="text-sm text-white/60">
-                      Sem registros ainda.
-                    </div>
+                    <div className="text-sm text-white/60">Sem registros ainda.</div>
                   ) : (
                     vaultLogs.map((log) => (
                       <div
@@ -401,7 +402,9 @@ export default function Home() {
                           </span>
                           <span className="text-white/60">{log.when}</span>
                         </div>
-                        {log.where && <div className="text-white/70 mt-1">Onde: {log.where}</div>}
+                        {log.where && (
+                          <div className="text-white/70 mt-1">Onde: {log.where}</div>
+                        )}
                         {log.obs && <div className="text-white/70 mt-1">Obs: {log.obs}</div>}
                         <div className="text-white/60 mt-1">Por: {log.by}</div>
                       </div>
@@ -410,7 +413,6 @@ export default function Home() {
                 </div>
               </section>
 
-              {/* 🧾 PEDIDOS (1/3 da largura no desktop) */}
               <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <h2 className="text-lg font-semibold">🧾 Pedidos</h2>
 
@@ -419,7 +421,7 @@ export default function Home() {
                     <label className="block text-sm text-white/80">Tipo</label>
                     <select
                       value={orderKind}
-                      onChange={(e) => setOrderKind(e.target.value as any)}
+                      onChange={(e) => setOrderKind(e.target.value as OrderKind)}
                       className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
                     >
                       <option value="EXTERNO">EXTERNO (pra dentro)</option>
@@ -438,9 +440,7 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-white/80">
-                      Quantidade
-                    </label>
+                    <label className="block text-sm text-white/80">Quantidade</label>
                     <input
                       type="number"
                       min={1}
@@ -466,7 +466,7 @@ export default function Home() {
                     <label className="block text-sm text-white/80">Status</label>
                     <select
                       value={orderStatus}
-                      onChange={(e) => setOrderStatus(e.target.value as any)}
+                      onChange={(e) => setOrderStatus(e.target.value as OrderStatus)}
                       className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
                     >
                       <option value="ABERTO">ABERTO</option>
@@ -477,9 +477,7 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-white/80">
-                      Observações
-                    </label>
+                    <label className="block text-sm text-white/80">Observações</label>
                     <input
                       value={orderNotes}
                       onChange={(e) => setOrderNotes(e.target.value)}
@@ -495,9 +493,7 @@ export default function Home() {
 
                 <div className="mt-4 space-y-2">
                   {orders.length === 0 ? (
-                    <div className="text-sm text-white/60">
-                      Sem pedidos ainda.
-                    </div>
+                    <div className="text-sm text-white/60">Sem pedidos ainda.</div>
                   ) : (
                     orders.map((o) => (
                       <div
@@ -510,15 +506,9 @@ export default function Home() {
                           </span>
                           <span className="text-white/60">{o.when}</span>
                         </div>
-                        <div className="text-white/70 mt-1">
-                          Parte: {o.party || "-"}
-                        </div>
-                        <div className="text-white/70 mt-1">
-                          Status: {o.status}
-                        </div>
-                        {o.notes && (
-                          <div className="text-white/70 mt-1">{o.notes}</div>
-                        )}
+                        <div className="text-white/70 mt-1">Parte: {o.party || "-"}</div>
+                        <div className="text-white/70 mt-1">Status: {o.status}</div>
+                        {o.notes && <div className="text-white/70 mt-1">{o.notes}</div>}
                         <div className="text-white/60 mt-1">Por: {o.by}</div>
                       </div>
                     ))
