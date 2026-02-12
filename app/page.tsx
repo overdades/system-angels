@@ -99,10 +99,7 @@ type DropOption<T extends string | number> = {
   label: string;
 };
 
-function useCloseOnOutsideClick(
-  open: boolean,
-  setOpen: (v: boolean) => void
-) {
+function useCloseOnOutsideClick(open: boolean, setOpen: (v: boolean) => void) {
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -148,7 +145,8 @@ function NiceSelect<T extends string | number>({
 
   const ref = useCloseOnOutsideClick(open, setOpen);
 
-  const current = options.find((o) => o.value === value)?.label ?? placeholder ?? "";
+  const current =
+    options.find((o) => o.value === value)?.label ?? placeholder ?? "";
 
   const filtered = useMemo(() => {
     if (!searchable) return options;
@@ -178,7 +176,9 @@ function NiceSelect<T extends string | number>({
           )}
 
           {filtered.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-white/60">Nada encontrado.</div>
+            <div className="px-3 py-2 text-sm text-white/60">
+              Nada encontrado.
+            </div>
           ) : (
             filtered.map((opt) => (
               <div
@@ -218,7 +218,9 @@ function OrgDropdown({
 
   const ref = useCloseOnOutsideClick(open, setOpen);
 
-  const filtered = ORGS.filter((o) => o.toLowerCase().includes(search.toLowerCase()));
+  const filtered = ORGS.filter((o) =>
+    o.toLowerCase().includes(search.toLowerCase())
+  );
   const label = value === "OUTRO" ? customValue || "Outro..." : value;
 
   return (
@@ -287,7 +289,8 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   // Baú
-  const [vaultDirection, setVaultDirection] = useState<VaultDirection>("ENTRADA");
+  const [vaultDirection, setVaultDirection] =
+    useState<VaultDirection>("ENTRADA");
   const [vaultItem, setVaultItem] = useState("");
   const [vaultQty, setVaultQty] = useState<number>(1);
   const [vaultWhere, setVaultWhere] = useState("");
@@ -298,15 +301,16 @@ export default function Home() {
   const [orderKind, setOrderKind] = useState<OrderKind>("EXTERNO");
   const [orderItem, setOrderItem] = useState("");
   const [orderQty, setOrderQty] = useState<number>(1);
-  const [orderPartyOption, setOrderPartyOption] = useState<OrgOption>(ORGS[0]);
+  const [orderPartyOption, setOrderPartyOption] =
+    useState<OrgOption>(ORGS[0]);
   const [orderPartyCustom, setOrderPartyCustom] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
 
-  // ocultar pedidos por perfil (só some pra você)
+  // ocultar pedidos por perfil
   const [hiddenOrderIds, setHiddenOrderIds] = useState<Set<string>>(new Set());
 
-  function hiddenKey(mid: number) {
+  function hiddenOrdersKey(mid: number) {
     return `hiddenOrders:${mid}`;
   }
 
@@ -316,25 +320,57 @@ export default function Home() {
     setHiddenOrderIds((prev) => {
       const next = new Set(prev);
       next.add(orderId);
-      localStorage.setItem(hiddenKey(loggedMember.id), JSON.stringify(Array.from(next)));
+      localStorage.setItem(
+        hiddenOrdersKey(loggedMember.id),
+        JSON.stringify(Array.from(next))
+      );
       return next;
     });
   }
 
+  // ✅ ocultar baú por perfil (NOVO)
+  const [hiddenVaultIds, setHiddenVaultIds] = useState<Set<string>>(new Set());
+
+  function hiddenVaultKey(mid: number) {
+    return `hiddenVault:${mid}`;
+  }
+
+  function hideVaultForMe(vaultId: string) {
+    if (!loggedMember) return;
+
+    setHiddenVaultIds((prev) => {
+      const next = new Set(prev);
+      next.add(vaultId);
+      localStorage.setItem(
+        hiddenVaultKey(loggedMember.id),
+        JSON.stringify(Array.from(next))
+      );
+      return next;
+    });
+  }
+
+  // carregar hidden sets quando troca de perfil
   useEffect(() => {
     if (!loggedMember) return;
 
-    const raw = localStorage.getItem(hiddenKey(loggedMember.id));
-    if (!raw) {
-      setHiddenOrderIds(new Set());
-      return;
+    const rawOrders = localStorage.getItem(hiddenOrdersKey(loggedMember.id));
+    if (!rawOrders) setHiddenOrderIds(new Set());
+    else {
+      try {
+        setHiddenOrderIds(new Set(JSON.parse(rawOrders) as string[]));
+      } catch {
+        setHiddenOrderIds(new Set());
+      }
     }
 
-    try {
-      const arr = JSON.parse(raw) as string[];
-      setHiddenOrderIds(new Set(arr));
-    } catch {
-      setHiddenOrderIds(new Set());
+    const rawVault = localStorage.getItem(hiddenVaultKey(loggedMember.id));
+    if (!rawVault) setHiddenVaultIds(new Set());
+    else {
+      try {
+        setHiddenVaultIds(new Set(JSON.parse(rawVault) as string[]));
+      } catch {
+        setHiddenVaultIds(new Set());
+      }
     }
   }, [loggedMember]);
 
@@ -482,6 +518,10 @@ export default function Home() {
     return orders.filter((o) => !hiddenOrderIds.has(o.id));
   }, [orders, hiddenOrderIds]);
 
+  const visibleVaultLogs = useMemo(() => {
+    return vaultLogs.filter((v) => !hiddenVaultIds.has(v.id));
+  }, [vaultLogs, hiddenVaultIds]);
+
   const memberOptions: DropOption<number>[] = MEMBERS.map((m) => ({
     value: m.id,
     label: m.name,
@@ -514,7 +554,9 @@ export default function Home() {
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <form onSubmit={handleLogin} className="space-y-4 max-w-md">
               <div>
-                <label className="block text-sm italic text-white/80">Senha do clube</label>
+                <label className="block text-sm italic text-white/80">
+                  Senha do clube
+                </label>
                 <input
                   value={clubPass}
                   onChange={(e) => setClubPass(e.target.value)}
@@ -639,19 +681,32 @@ export default function Home() {
                   {vaultLogs.length === 0 ? (
                     <div className="text-sm text-white/60">Sem registros ainda.</div>
                   ) : (
-                    vaultLogs.map((log) => (
+                    visibleVaultLogs.map((log) => (
                       <div
                         key={log.id}
-                        className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
+                        className="relative rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
                       >
+                        <button
+                          type="button"
+                          onClick={() => hideVaultForMe(log.id)}
+                          title="Ocultar deste perfil"
+                          className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
+                        >
+                          ×
+                        </button>
+
                         <div className="flex justify-between">
                           <span className="font-medium">
                             {log.direction} — {log.item} x{log.qty}
                           </span>
                           <span className="text-white/60">{log.when}</span>
                         </div>
-                        {log.where && <div className="text-white/70 mt-1">Onde: {log.where}</div>}
-                        {log.obs && <div className="text-white/70 mt-1">Obs: {log.obs}</div>}
+                        {log.where && (
+                          <div className="text-white/70 mt-1">Onde: {log.where}</div>
+                        )}
+                        {log.obs && (
+                          <div className="text-white/70 mt-1">Obs: {log.obs}</div>
+                        )}
                         <div className="text-white/60 mt-1">Por: {log.by}</div>
                       </div>
                     ))
@@ -694,7 +749,9 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-white/80">Organização / Parte</label>
+                    <label className="block text-sm text-white/80">
+                      Organização / Parte
+                    </label>
 
                     <OrgDropdown
                       value={orderPartyOption}
