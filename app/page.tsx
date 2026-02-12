@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Member = { id: number; name: string; pin: string };
 
@@ -17,7 +17,6 @@ type VaultLog = {
 };
 
 type OrderKind = "EXTERNO" | "INTERNO";
-type OrderStatus = "ABERTO" | "ANDAMENTO" | "FINALIZADO" | "CANCELADO";
 type Order = {
   id: string;
   when: string;
@@ -25,7 +24,6 @@ type Order = {
   item: string;
   qty: number;
   party: string;
-  status: OrderStatus;
   notes: string;
   by: string;
 };
@@ -37,13 +35,35 @@ const CLUB_PASSWORD = "jgcalvo";
 const MEMBERS: Member[] = [
   { id: 1, name: "DRK", pin: "1111" },
   { id: 2, name: "OVER", pin: "2222" },
-  { id: 3, name: "SLX", pin: "3333" },
 ];
 
 const ORDER_ALLOWED_IDS = new Set<number>([1, 2]);
 
+const ORGS = [
+  "Marabunta",
+  "Los Vagos",
+  "Families",
+  "Ballas",
+  "DVD",
+  "Nihil",
+  "Agnikai's",
+  "South Thunder",
+  "7 Sombras",
+  "Cesarini",
+  "Black Rose",
+  "Bandolero MC",
+  "The Lost MC",
+] as const;
+
+type OrgOption = (typeof ORGS)[number] | "OUTRO";
+
 function nowBR(): string {
   return new Date().toLocaleString();
+}
+
+function resolveParty(option: OrgOption, custom: string): string {
+  if (option === "OUTRO") return custom.trim();
+  return option;
 }
 
 function vaultTitle(direction: VaultDirection): string {
@@ -66,9 +86,198 @@ async function postWebhook(channel: WebhookChannel, payload: unknown) {
       body: JSON.stringify({ channel, payload }),
     });
   } catch {
-    // silencioso por enquanto (MVP)
+    // MVP: sem erro na tela por enquanto
   }
 }
+
+/* =========================
+   Dropdown genérico (bonito)
+   ========================= */
+
+type DropOption<T extends string | number> = {
+  value: T;
+  label: string;
+};
+
+function useCloseOnOutsideClick(
+  open: boolean,
+  setOpen: (v: boolean) => void
+) {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onDown(e: MouseEvent) {
+      if (!ref.current) return;
+      if (!ref.current.contains(e.target as Node)) setOpen(false);
+    }
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, setOpen]);
+
+  return ref;
+}
+
+function NiceSelect<T extends string | number>({
+  value,
+  options,
+  onChange,
+  placeholder,
+  searchable = false,
+  searchPlaceholder = "Buscar...",
+}: {
+  value: T;
+  options: DropOption<T>[];
+  onChange: (v: T) => void;
+  placeholder?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const ref = useCloseOnOutsideClick(open, setOpen);
+
+  const current = options.find((o) => o.value === value)?.label ?? placeholder ?? "";
+
+  const filtered = useMemo(() => {
+    if (!searchable) return options;
+    const s = search.toLowerCase();
+    return options.filter((o) => o.label.toLowerCase().includes(s));
+  }, [options, searchable, search]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-left hover:bg-black/50 transition"
+      >
+        {current || placeholder}
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-2 w-full rounded-xl border border-white/10 bg-black/90 backdrop-blur shadow-xl p-2 max-h-60 overflow-auto">
+          {searchable && (
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={searchPlaceholder}
+              className="w-full mb-2 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none"
+            />
+          )}
+
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-white/60">Nada encontrado.</div>
+          ) : (
+            filtered.map((opt) => (
+              <div
+                key={String(opt.value)}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                  setSearch("");
+                }}
+                className="px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition"
+              >
+                {opt.label}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================
+   Dropdown de organizações
+   ========================= */
+
+function OrgDropdown({
+  value,
+  customValue,
+  onChange,
+}: {
+  value: OrgOption;
+  customValue: string;
+  onChange: (opt: OrgOption, custom?: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const ref = useCloseOnOutsideClick(open, setOpen);
+
+  const filtered = ORGS.filter((o) => o.toLowerCase().includes(search.toLowerCase()));
+  const label = value === "OUTRO" ? customValue || "Outro..." : value;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-left hover:bg-black/50 transition"
+      >
+        {label}
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-2 w-full rounded-xl border border-white/10 bg-black/90 backdrop-blur shadow-xl p-2 max-h-60 overflow-auto">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar organização..."
+            className="w-full mb-2 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none"
+          />
+
+          {filtered.map((org) => (
+            <div
+              key={org}
+              onClick={() => {
+                onChange(org);
+                setOpen(false);
+                setSearch("");
+              }}
+              className="px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition"
+            >
+              {org}
+            </div>
+          ))}
+
+          <div
+            onClick={() => onChange("OUTRO")}
+            className="px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition text-white/70"
+          >
+            Outro...
+          </div>
+
+          {value === "OUTRO" && (
+            <input
+              value={customValue}
+              onChange={(e) => onChange("OUTRO", e.target.value)}
+              placeholder="Digite o nome..."
+              className="mt-2 w-full rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none"
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================
+   Home
+   ========================= */
 
 export default function Home() {
   const [clubPass, setClubPass] = useState("");
@@ -89,10 +298,45 @@ export default function Home() {
   const [orderKind, setOrderKind] = useState<OrderKind>("EXTERNO");
   const [orderItem, setOrderItem] = useState("");
   const [orderQty, setOrderQty] = useState<number>(1);
-  const [orderParty, setOrderParty] = useState("");
-  const [orderStatus, setOrderStatus] = useState<OrderStatus>("ABERTO");
+  const [orderPartyOption, setOrderPartyOption] = useState<OrgOption>(ORGS[0]);
+  const [orderPartyCustom, setOrderPartyCustom] = useState("");
   const [orderNotes, setOrderNotes] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
+
+  // ocultar pedidos por perfil (só some pra você)
+  const [hiddenOrderIds, setHiddenOrderIds] = useState<Set<string>>(new Set());
+
+  function hiddenKey(mid: number) {
+    return `hiddenOrders:${mid}`;
+  }
+
+  function hideOrderForMe(orderId: string) {
+    if (!loggedMember) return;
+
+    setHiddenOrderIds((prev) => {
+      const next = new Set(prev);
+      next.add(orderId);
+      localStorage.setItem(hiddenKey(loggedMember.id), JSON.stringify(Array.from(next)));
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    if (!loggedMember) return;
+
+    const raw = localStorage.getItem(hiddenKey(loggedMember.id));
+    if (!raw) {
+      setHiddenOrderIds(new Set());
+      return;
+    }
+
+    try {
+      const arr = JSON.parse(raw) as string[];
+      setHiddenOrderIds(new Set(arr));
+    } catch {
+      setHiddenOrderIds(new Set());
+    }
+  }, [loggedMember]);
 
   useEffect(() => {
     const savedMember = localStorage.getItem("loggedMember");
@@ -138,22 +382,15 @@ export default function Home() {
 
   function handleLogout() {
     localStorage.removeItem("loggedMember");
-    localStorage.removeItem("vaultLogs");
-    localStorage.removeItem("orders");
-
     setLoggedMember(null);
     setClubPass("");
     setPin("");
     setError(null);
-
-    setVaultLogs([]);
-    setOrders([]);
   }
 
   async function addVaultLog(e: React.FormEvent) {
     e.preventDefault();
     if (!loggedMember) return;
-
     if (!vaultItem.trim()) return;
 
     const log: VaultLog = {
@@ -202,14 +439,16 @@ export default function Home() {
 
     if (!orderItem.trim()) return;
 
+    const party = resolveParty(orderPartyOption, orderPartyCustom);
+    if (orderPartyOption === "OUTRO" && !party) return;
+
     const order: Order = {
       id: crypto.randomUUID(),
       when: nowBR(),
       kind: orderKind,
       item: orderItem.trim(),
       qty: orderQty,
-      party: orderParty.trim(),
-      status: orderStatus,
+      party,
       notes: orderNotes.trim(),
       by: loggedMember.name,
     };
@@ -225,8 +464,7 @@ export default function Home() {
             { name: "⠀", value: `**👤 NOME:** ${loggedMember.name}`, inline: true },
             { name: "⠀", value: `**📦 ITEM:** ${order.item}`, inline: true },
             { name: "⠀", value: `**🔢 QUANTIDADE:** ${order.qty}`, inline: true },
-            { name: "🏷️ PARTE:", value: order.party || "-", inline: false },
-            { name: "📌 STATUS:", value: order.status, inline: false },
+            { name: "🏷️ PARA:", value: order.party || "-", inline: false },
             { name: "📝 OBS:", value: order.notes || "-", inline: false },
           ],
         },
@@ -235,31 +473,48 @@ export default function Home() {
 
     setOrderItem("");
     setOrderQty(1);
-    setOrderParty("");
-    setOrderStatus("ABERTO");
+    setOrderPartyOption(ORGS[0]);
+    setOrderPartyCustom("");
     setOrderNotes("");
   }
 
+  const visibleOrders = useMemo(() => {
+    return orders.filter((o) => !hiddenOrderIds.has(o.id));
+  }, [orders, hiddenOrderIds]);
+
+  const memberOptions: DropOption<number>[] = MEMBERS.map((m) => ({
+    value: m.id,
+    label: m.name,
+  }));
+
+  const vaultDirectionOptions: DropOption<VaultDirection>[] = [
+    { value: "ENTRADA", label: "ENTRADA" },
+    { value: "SAIDA", label: "SAÍDA" },
+  ];
+
+  const orderKindOptions: DropOption<OrderKind>[] = [
+    { value: "EXTERNO", label: "Externo" },
+    { value: "INTERNO", label: "Interno" },
+  ];
+
   return (
-    <main className="min-h-screen flex items-center justify-center p-6">
-      <div className="relative overflow-hidden w-full max-w-5xl rounded-2xl border border-white/15 bg-white/5 p-6 shadow">
-        <h1 className="text-2xl font-semibold">ANGELS OF CODES</h1>
+    <main className="min-h-screen flex items-center justify-center p-6 select-none">
+      <div className="relative w-full max-w-5xl rounded-2xl border border-white/15 bg-white/5 p-6 shadow">
+        <h1 className="text-2xl font-bold">ANGELS OF CODES</h1>
 
-        <img
-          src="/logo-angels.png"
-          alt=""
-          className="pointer-events-none select-none absolute right-[-120px] top-1/2 -translate-y-1/2 opacity-[0.03] w-[520px] lg:w-[700px]"
-        />
-
-        <p className="text-sm text-white/70 mt-1">
-          (MVP) Login por senha do clube + Membro + PIN
-        </p>
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <img
+            src="/logo-angels.png"
+            alt=""
+            className="select-none absolute right-[-120px] top-1/2 -translate-y-1/2 opacity-[0.03] w-[520px] lg:w-[700px]"
+          />
+        </div>
 
         {!loggedMember ? (
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <form onSubmit={handleLogin} className="space-y-4 max-w-md">
               <div>
-                <label className="block text-sm text-white/80">Senha do clube</label>
+                <label className="block text-sm italic text-white/80">Senha do clube</label>
                 <input
                   value={clubPass}
                   onChange={(e) => setClubPass(e.target.value)}
@@ -269,22 +524,18 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="block text-sm text-white/80">Membro</label>
-                <select
+                <label className="block text-sm italic text-white/80">Membro</label>
+                <NiceSelect<number>
                   value={memberId}
-                  onChange={(e) => setMemberId(Number(e.target.value))}
-                  className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2 outline-none focus:border-white/30"
-                >
-                  {MEMBERS.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
+                  options={memberOptions}
+                  onChange={(v) => setMemberId(v)}
+                  searchable
+                  searchPlaceholder="Buscar membro..."
+                />
               </div>
 
               <div>
-                <label className="block text-sm text-white/80">PIN</label>
+                <label className="block text-sm italic text-white/80">PIN</label>
                 <input
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
@@ -331,14 +582,11 @@ export default function Home() {
                 <form onSubmit={addVaultLog} className="mt-3 grid gap-3">
                   <div>
                     <label className="block text-sm text-white/80">Tipo</label>
-                    <select
+                    <NiceSelect<VaultDirection>
                       value={vaultDirection}
-                      onChange={(e) => setVaultDirection(e.target.value as VaultDirection)}
-                      className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
-                    >
-                      <option value="ENTRADA">ENTRADA</option>
-                      <option value="SAIDA">SAÍDA</option>
-                    </select>
+                      options={vaultDirectionOptions}
+                      onChange={(v) => setVaultDirection(v)}
+                    />
                   </div>
 
                   <div>
@@ -402,9 +650,7 @@ export default function Home() {
                           </span>
                           <span className="text-white/60">{log.when}</span>
                         </div>
-                        {log.where && (
-                          <div className="text-white/70 mt-1">Onde: {log.where}</div>
-                        )}
+                        {log.where && <div className="text-white/70 mt-1">Onde: {log.where}</div>}
                         {log.obs && <div className="text-white/70 mt-1">Obs: {log.obs}</div>}
                         <div className="text-white/60 mt-1">Por: {log.by}</div>
                       </div>
@@ -419,14 +665,11 @@ export default function Home() {
                 <form onSubmit={addOrder} className="mt-3 grid gap-3">
                   <div>
                     <label className="block text-sm text-white/80">Tipo</label>
-                    <select
+                    <NiceSelect<OrderKind>
                       value={orderKind}
-                      onChange={(e) => setOrderKind(e.target.value as OrderKind)}
-                      className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
-                    >
-                      <option value="EXTERNO">EXTERNO (pra dentro)</option>
-                      <option value="INTERNO">INTERNO (pra fora)</option>
-                    </select>
+                      options={orderKindOptions}
+                      onChange={(v) => setOrderKind(v)}
+                    />
                   </div>
 
                   <div>
@@ -434,7 +677,7 @@ export default function Home() {
                     <input
                       value={orderItem}
                       onChange={(e) => setOrderItem(e.target.value)}
-                      placeholder="Ex: AK"
+                      placeholder="Ex: Colete"
                       className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
                     />
                   </div>
@@ -451,29 +694,17 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-white/80">
-                      Parte (quem pediu / pra quem)
-                    </label>
-                    <input
-                      value={orderParty}
-                      onChange={(e) => setOrderParty(e.target.value)}
-                      placeholder="Ex: Cliente X"
-                      className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
-                    />
-                  </div>
+                    <label className="block text-sm text-white/80">Organização / Parte</label>
 
-                  <div>
-                    <label className="block text-sm text-white/80">Status</label>
-                    <select
-                      value={orderStatus}
-                      onChange={(e) => setOrderStatus(e.target.value as OrderStatus)}
-                      className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
-                    >
-                      <option value="ABERTO">ABERTO</option>
-                      <option value="ANDAMENTO">ANDAMENTO</option>
-                      <option value="FINALIZADO">FINALIZADO</option>
-                      <option value="CANCELADO">CANCELADO</option>
-                    </select>
+                    <OrgDropdown
+                      value={orderPartyOption}
+                      customValue={orderPartyCustom}
+                      onChange={(opt, custom) => {
+                        setOrderPartyOption(opt);
+                        if (opt === "OUTRO") setOrderPartyCustom(custom ?? "");
+                        else setOrderPartyCustom("");
+                      }}
+                    />
                   </div>
 
                   <div>
@@ -495,11 +726,20 @@ export default function Home() {
                   {orders.length === 0 ? (
                     <div className="text-sm text-white/60">Sem pedidos ainda.</div>
                   ) : (
-                    orders.map((o) => (
+                    visibleOrders.map((o) => (
                       <div
                         key={o.id}
-                        className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
+                        className="relative rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
                       >
+                        <button
+                          type="button"
+                          onClick={() => hideOrderForMe(o.id)}
+                          title="Ocultar deste perfil"
+                          className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
+                        >
+                          ×
+                        </button>
+
                         <div className="flex justify-between">
                           <span className="font-medium">
                             {o.kind} — {o.item} x{o.qty}
@@ -507,7 +747,6 @@ export default function Home() {
                           <span className="text-white/60">{o.when}</span>
                         </div>
                         <div className="text-white/70 mt-1">Parte: {o.party || "-"}</div>
-                        <div className="text-white/70 mt-1">Status: {o.status}</div>
                         {o.notes && <div className="text-white/70 mt-1">{o.notes}</div>}
                         <div className="text-white/60 mt-1">Por: {o.by}</div>
                       </div>

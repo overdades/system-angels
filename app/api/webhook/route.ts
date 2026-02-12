@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
+type Channel = "vault" | "orders";
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-
-    // body.channel: "vault" | "orders"
-    const channel = body.channel;
+    const channel = body.channel as Channel;
+    const payload = body.payload;
 
     const url =
       channel === "orders"
@@ -22,10 +23,11 @@ export async function POST(req: Request) {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body.payload), // payload = { embeds: [...] } ou { content: ... }
+      body: JSON.stringify(payload),
     });
 
     const text = await res.text();
+
     if (!res.ok) {
       return NextResponse.json(
         { ok: false, error: `Discord respondeu ${res.status}`, details: text },
