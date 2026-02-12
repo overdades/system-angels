@@ -159,7 +159,7 @@ function NiceSelect<T extends string | number>({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-left hover:bg-black/50 transition"
+        className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-left hover:bg-black/50 transition outline-none focus:border-white/25"
       >
         {current || placeholder}
       </button>
@@ -171,7 +171,7 @@ function NiceSelect<T extends string | number>({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full mb-2 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none"
+              className="w-full mb-2 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none focus:border-white/25"
             />
           )}
 
@@ -228,7 +228,7 @@ function OrgDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-left hover:bg-black/50 transition"
+        className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-left hover:bg-black/50 transition outline-none focus:border-white/25"
       >
         {label}
       </button>
@@ -239,7 +239,7 @@ function OrgDropdown({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar organização..."
-            className="w-full mb-2 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none"
+            className="w-full mb-2 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none focus:border-white/25"
           />
 
           {filtered.map((org) => (
@@ -268,7 +268,7 @@ function OrgDropdown({
               value={customValue}
               onChange={(e) => onChange("OUTRO", e.target.value)}
               placeholder="Digite o nome..."
-              className="mt-2 w-full rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none"
+              className="mt-2 w-full rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none focus:border-white/25"
             />
           )}
         </div>
@@ -328,7 +328,7 @@ export default function Home() {
     });
   }
 
-  // ✅ ocultar baú por perfil (NOVO)
+  // ocultar baú por perfil
   const [hiddenVaultIds, setHiddenVaultIds] = useState<Set<string>>(new Set());
 
   function hiddenVaultKey(mid: number) {
@@ -566,7 +566,9 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="block text-sm italic text-white/80">Membro</label>
+                <label className="block text-sm italic text-white/80">
+                  Membro
+                </label>
                 <NiceSelect<number>
                   value={memberId}
                   options={memberOptions}
@@ -606,7 +608,9 @@ export default function Home() {
               <div>
                 <div className="text-sm text-white/70">Logado como</div>
                 <div className="text-lg font-semibold">{loggedMember.name}</div>
-                <div className="text-xs text-white/60">ID: {loggedMember.id}</div>
+                <div className="text-xs text-white/60">
+                  ID: {loggedMember.id}
+                </div>
               </div>
 
               <button
@@ -618,7 +622,8 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <section className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
+              {/* BAÚ */}
+              <section className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4 overflow-visible">
                 <h2 className="text-lg font-semibold">📦 Log do Baú</h2>
 
                 <form onSubmit={addVaultLog} className="mt-3 grid gap-3">
@@ -642,7 +647,9 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-white/80">Quantidade</label>
+                    <label className="block text-sm text-white/80">
+                      Quantidade
+                    </label>
                     <input
                       type="number"
                       min={1}
@@ -679,42 +686,58 @@ export default function Home() {
 
                 <div className="mt-4 space-y-2">
                   {vaultLogs.length === 0 ? (
-                    <div className="text-sm text-white/60">Sem registros ainda.</div>
+                    <div className="text-sm text-white/60">
+                      Sem registros ainda.
+                    </div>
                   ) : (
                     visibleVaultLogs.map((log) => (
                       <div
                         key={log.id}
-                        className="relative rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
+                        className="group relative rounded-xl border border-white/10 bg-black/20 p-3 pb-8 pr-10 text-sm transition
+                                   hover:bg-black/25 hover:border-white/15 hover:-translate-y-[1px] hover:shadow-lg"
                       >
+                        {/* X (só no hover) */}
                         <button
                           type="button"
                           onClick={() => hideVaultForMe(log.id)}
                           title="Ocultar deste perfil"
-                          className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
+                          className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300
+                                     hover:bg-red-500/25 flex items-center justify-center leading-none z-10
+                                     opacity-0 group-hover:opacity-100 transition"
                         >
                           ×
                         </button>
 
-                        <div className="flex justify-between">
-                          <span className="font-medium">
-                            {log.direction} — {log.item} x{log.qty}
-                          </span>
-                          <span className="text-white/60">{log.when}</span>
+                        <div className="font-medium">
+                          {log.direction} — {log.item} x{log.qty}
                         </div>
+
                         {log.where && (
-                          <div className="text-white/70 mt-1">Onde: {log.where}</div>
+                          <div className="text-white/70 mt-1">
+                            Onde: {log.where}
+                          </div>
                         )}
+
                         {log.obs && (
-                          <div className="text-white/70 mt-1">Obs: {log.obs}</div>
+                          <div className="text-white/70 mt-1">
+                            Obs: {log.obs}
+                          </div>
                         )}
+
                         <div className="text-white/60 mt-1">Por: {log.by}</div>
+
+                        {/* Data/hora no canto inferior direito */}
+                        <div className="absolute bottom-2 right-3 text-[10px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60">
+                          {log.when}
+                        </div>
                       </div>
                     ))
                   )}
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              {/* PEDIDOS */}
+              <section className="rounded-2xl border border-white/10 bg-white/5 p-4 overflow-visible">
                 <h2 className="text-lg font-semibold">🧾 Pedidos</h2>
 
                 <form onSubmit={addOrder} className="mt-3 grid gap-3">
@@ -738,7 +761,9 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-white/80">Quantidade</label>
+                    <label className="block text-sm text-white/80">
+                      Quantidade
+                    </label>
                     <input
                       type="number"
                       min={1}
@@ -765,7 +790,9 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-white/80">Observações</label>
+                    <label className="block text-sm text-white/80">
+                      Observações
+                    </label>
                     <input
                       value={orderNotes}
                       onChange={(e) => setOrderNotes(e.target.value)}
@@ -781,31 +808,46 @@ export default function Home() {
 
                 <div className="mt-4 space-y-2">
                   {orders.length === 0 ? (
-                    <div className="text-sm text-white/60">Sem pedidos ainda.</div>
+                    <div className="text-sm text-white/60">
+                      Sem pedidos ainda.
+                    </div>
                   ) : (
                     visibleOrders.map((o) => (
                       <div
                         key={o.id}
-                        className="relative rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
+                        className="group relative rounded-xl border border-white/10 bg-black/20 p-3 pb-8 pr-10 text-sm transition
+                                   hover:bg-black/25 hover:border-white/15 hover:-translate-y-[1px] hover:shadow-lg"
                       >
+                        {/* X (só no hover) */}
                         <button
                           type="button"
                           onClick={() => hideOrderForMe(o.id)}
                           title="Ocultar deste perfil"
-                          className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
+                          className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300
+                                     hover:bg-red-500/25 flex items-center justify-center leading-none z-10
+                                     opacity-0 group-hover:opacity-100 transition"
                         >
                           ×
                         </button>
 
-                        <div className="flex justify-between">
-                          <span className="font-medium">
-                            {o.kind} — {o.item} x{o.qty}
-                          </span>
-                          <span className="text-white/60">{o.when}</span>
+                        <div className="font-medium">
+                          {o.kind} — {o.item} x{o.qty}
                         </div>
-                        <div className="text-white/70 mt-1">Parte: {o.party || "-"}</div>
-                        {o.notes && <div className="text-white/70 mt-1">{o.notes}</div>}
+
+                        <div className="text-white/70 mt-1">
+                          Parte: {o.party || "-"}
+                        </div>
+
+                        {o.notes && (
+                          <div className="text-white/70 mt-1">{o.notes}</div>
+                        )}
+
                         <div className="text-white/60 mt-1">Por: {o.by}</div>
+
+                        {/* Data/hora no canto inferior direito (premium igual) */}
+                        <div className="absolute bottom-2 right-3 text-[10px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60">
+                          {o.when}
+                        </div>
                       </div>
                     ))
                   )}
