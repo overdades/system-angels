@@ -75,7 +75,10 @@ const ORGS = [
 type OrgOption = (typeof ORGS)[number] | "OUTRO";
 
 // item presets (deixa vazio e preenche depois)
-const ITEMS = [] as const;
+const ITEMS = [
+  "1911",
+  "Munição 9mm",
+] as const;
 
 type ItemPreset = (typeof ITEMS)[number];
 type ItemOption = ItemPreset | "OUTRO";
@@ -403,7 +406,10 @@ export default function Home() {
   // Baú
   const [vaultDirection, setVaultDirection] =
     useState<VaultDirection>("ENTRADA");
-  const [vaultItem, setVaultItem] = useState("");
+  // Baú: item como preset + "OUTRO"
+  const [vaultItemOption, setVaultItemOption] = useState<ItemOption>("OUTRO");
+  const [vaultItemCustom, setVaultItemCustom] = useState("");
+
   const [vaultQty, setVaultQty] = useState<number>(1);
   const [vaultWhere, setVaultWhere] = useState("");
   const [vaultObs, setVaultObs] = useState("");
@@ -561,13 +567,15 @@ export default function Home() {
   async function addVaultLog(e: React.FormEvent) {
     e.preventDefault();
     if (!loggedMember) return;
-    if (!vaultItem.trim()) return;
+    const finalVaultItem = resolveItem(vaultItemOption, vaultItemCustom);
+    if (!finalVaultItem) return;
+
 
     const log: VaultLog = {
       id: crypto.randomUUID(),
       when: nowBR(),
       direction: vaultDirection,
-      item: vaultItem.trim(),
+      item: finalVaultItem,
       qty: vaultQty,
       where: vaultWhere.trim(),
       obs: vaultObs.trim(),
@@ -596,7 +604,9 @@ export default function Home() {
       ],
     });
 
-    setVaultItem("");
+    setVaultItemOption("OUTRO");
+    setVaultItemCustom("");
+
     setVaultQty(1);
     setVaultWhere("");
     setVaultObs("");
@@ -690,8 +700,8 @@ export default function Home() {
   }));
 
   const vaultDirectionOptions: DropOption<VaultDirection>[] = [
-    { value: "ENTRADA", label: "ENTRADA" },
-    { value: "SAIDA", label: "SAÍDA" },
+    { value: "ENTRADA", label: "Entrada" },
+    { value: "SAIDA", label: "Saída" },
   ];
 
   const orderKindOptions: DropOption<OrderKind>[] = [
@@ -807,13 +817,34 @@ export default function Home() {
 
                   <div>
                     <label className="block text-sm text-white/80">Item</label>
-                    <input
-                      value={vaultItem}
-                      onChange={(e) => setVaultItem(e.target.value)}
-                      placeholder="Ex: Cabelo do Ticano"
-                      className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
-                    />
+
+                    {/* Se tiver itens cadastrados: dropdown com "Outro..." */}
+                    {(ITEMS as readonly string[]).length > 0 ? (
+                      <div className="mt-1">
+                        <ItemDropdown
+                          value={vaultItemOption}
+                          customValue={vaultItemCustom}
+                          onChange={(opt, custom) => {
+                            setVaultItemOption(opt);
+                            if (opt === "OUTRO") setVaultItemCustom(custom ?? "");
+                            else setVaultItemCustom("");
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      /* Se ITEMS estiver vazio, cai pro input pra você não travar */
+                      <input
+                        value={vaultItemCustom}
+                        onChange={(e) => {
+                          setVaultItemOption("OUTRO");
+                          setVaultItemCustom(e.target.value);
+                        }}
+                        placeholder="(Sem itens cadastrados) digite o item..."
+                        className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
+                      />
+                    )}
                   </div>
+
 
                   <div>
                     <label className="block text-sm text-white/80">
