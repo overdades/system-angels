@@ -2,9 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+/* =====================================================
+   TYPES
+===================================================== */
+
 type Member = { id: number; name: string; pin: string };
 
 type VaultDirection = "ENTRADA" | "SAIDA";
+
 type VaultLog = {
   id: string;
   when: string;
@@ -17,18 +22,29 @@ type VaultLog = {
 };
 
 type OrderKind = "EXTERNO" | "INTERNO";
+
+// quem é o "PARA" do pedido
+type OrderPartyType = "ORG" | "MEMBER";
+
 type Order = {
   id: string;
   when: string;
   kind: OrderKind;
   item: string;
   qty: number;
+
+  partyType: OrderPartyType; // ✅ NOVO (corrige erro do TS)
   party: string;
+
   notes: string;
   by: string;
 };
 
 type WebhookChannel = "vault" | "orders";
+
+/* =====================================================
+   CONFIG
+===================================================== */
 
 const CLUB_PASSWORD = "jgcalvo";
 
@@ -39,6 +55,7 @@ const MEMBERS: Member[] = [
 
 const ORDER_ALLOWED_IDS = new Set<number>([1, 2]);
 
+// org presets
 const ORGS = [
   "Marabunta",
   "Los Vagos",
@@ -57,24 +74,44 @@ const ORGS = [
 
 type OrgOption = (typeof ORGS)[number] | "OUTRO";
 
+// item presets (deixa vazio e preenche depois)
+const ITEMS = [] as const;
+
+type ItemPreset = (typeof ITEMS)[number];
+type ItemOption = ItemPreset | "OUTRO";
+
+/* =====================================================
+   HELPERS
+===================================================== */
+
 function nowBR(): string {
   return new Date().toLocaleString();
 }
 
-function resolveParty(option: OrgOption, custom: string): string {
-  if (option === "OUTRO") return custom.trim();
-  return option;
+function resolveParty(option: OrgOption, custom: string) {
+  return option === "OUTRO" ? custom.trim() : option;
 }
 
-function vaultTitle(direction: VaultDirection): string {
+// ✅ faltava essa função (corrige erro resolvePartyFromOrg)
+function resolvePartyFromOrg(option: OrgOption, custom: string) {
+  return resolveParty(option, custom);
+}
+
+// ✅ faltava essa função (corrige erro resolveItem)
+function resolveItem(option: ItemOption, custom: string) {
+  if (option === "OUTRO") return custom.trim();
+  return String(option);
+}
+
+function vaultTitle(direction: VaultDirection) {
   return direction === "ENTRADA" ? "ENTRADA" : "SAÍDA";
 }
 
-function vaultColor(direction: VaultDirection): number {
+function vaultColor(direction: VaultDirection) {
   return direction === "ENTRADA" ? 5763719 : 15548997;
 }
 
-function orderColor(kind: OrderKind): number {
+function orderColor(kind: OrderKind) {
   return kind === "EXTERNO" ? 3447003 : 10181046;
 }
 
@@ -86,19 +123,20 @@ async function postWebhook(channel: WebhookChannel, payload: unknown) {
       body: JSON.stringify({ channel, payload }),
     });
   } catch {
-    // MVP: sem erro na tela por enquanto
+    // intentionally silent (MVP)
   }
 }
 
-/* =========================
-   Dropdown genérico (bonito)
-   ========================= */
+/* =====================================================
+   GENERIC DROPDOWN CORE
+===================================================== */
 
 type DropOption<T extends string | number> = {
   value: T;
   label: string;
 };
 
+// fecha dropdown ao clicar fora / ESC
 function useCloseOnOutsideClick(open: boolean, setOpen: (v: boolean) => void) {
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -116,6 +154,7 @@ function useCloseOnOutsideClick(open: boolean, setOpen: (v: boolean) => void) {
 
     window.addEventListener("mousedown", onDown);
     window.addEventListener("keydown", onKey);
+
     return () => {
       window.removeEventListener("mousedown", onDown);
       window.removeEventListener("keydown", onKey);
@@ -159,7 +198,7 @@ function NiceSelect<T extends string | number>({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-left hover:bg-black/50 transition outline-none focus:border-white/25"
+        className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-left hover:bg-black/50 transition"
       >
         {current || placeholder}
       </button>
@@ -171,38 +210,32 @@ function NiceSelect<T extends string | number>({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full mb-2 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none focus:border-white/25"
+              className="w-full mb-2 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none"
             />
           )}
 
-          {filtered.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-white/60">
-              Nada encontrado.
+          {filtered.map((opt) => (
+            <div
+              key={String(opt.value)}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+                setSearch("");
+              }}
+              className="px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition"
+            >
+              {opt.label}
             </div>
-          ) : (
-            filtered.map((opt) => (
-              <div
-                key={String(opt.value)}
-                onClick={() => {
-                  onChange(opt.value);
-                  setOpen(false);
-                  setSearch("");
-                }}
-                className="px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition"
-              >
-                {opt.label}
-              </div>
-            ))
-          )}
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-/* =========================
-   Dropdown de organizações
-   ========================= */
+/* =====================================================
+   ORG DROPDOWN
+===================================================== */
 
 function OrgDropdown({
   value,
@@ -221,6 +254,7 @@ function OrgDropdown({
   const filtered = ORGS.filter((o) =>
     o.toLowerCase().includes(search.toLowerCase())
   );
+
   const label = value === "OUTRO" ? customValue || "Outro..." : value;
 
   return (
@@ -228,7 +262,7 @@ function OrgDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-left hover:bg-black/50 transition outline-none focus:border-white/25"
+        className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-left hover:bg-black/50 transition"
       >
         {label}
       </button>
@@ -239,7 +273,7 @@ function OrgDropdown({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar organização..."
-            className="w-full mb-2 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none focus:border-white/25"
+            className="w-full mb-2 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none"
           />
 
           {filtered.map((org) => (
@@ -250,7 +284,7 @@ function OrgDropdown({
                 setOpen(false);
                 setSearch("");
               }}
-              className="px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition"
+              className="px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer"
             >
               {org}
             </div>
@@ -258,7 +292,7 @@ function OrgDropdown({
 
           <div
             onClick={() => onChange("OUTRO")}
-            className="px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer transition text-white/70"
+            className="px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer text-white/70"
           >
             Outro...
           </div>
@@ -268,7 +302,7 @@ function OrgDropdown({
               value={customValue}
               onChange={(e) => onChange("OUTRO", e.target.value)}
               placeholder="Digite o nome..."
-              className="mt-2 w-full rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none focus:border-white/25"
+              className="mt-2 w-full rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none"
             />
           )}
         </div>
@@ -277,9 +311,87 @@ function OrgDropdown({
   );
 }
 
-/* =========================
-   Home
-   ========================= */
+/* =====================================================
+   ITEM DROPDOWN (usado nos PEDIDOS)
+===================================================== */
+
+function ItemDropdown({
+  value,
+  customValue,
+  onChange,
+}: {
+  value: ItemOption;
+  customValue: string;
+  onChange: (opt: ItemOption, custom?: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const ref = useCloseOnOutsideClick(open, setOpen);
+
+  const filtered = (ITEMS as readonly string[]).filter((it) =>
+    it.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const label = value === "OUTRO" ? customValue || "Outro..." : String(value);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-left hover:bg-black/50 transition"
+      >
+        {label}
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-2 w-full rounded-xl border border-white/10 bg-black/90 backdrop-blur shadow-xl p-2 max-h-60 overflow-auto">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar item..."
+            className="w-full mb-2 rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none"
+          />
+
+          {filtered.map((it) => (
+            <div
+              key={it}
+              onClick={() => {
+                onChange(it as ItemOption);
+                setOpen(false);
+                setSearch("");
+              }}
+              className="px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer"
+            >
+              {it}
+            </div>
+          ))}
+
+          <div
+            onClick={() => onChange("OUTRO")}
+            className="px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer text-white/70"
+          >
+            Outro...
+          </div>
+
+          {value === "OUTRO" && (
+            <input
+              value={customValue}
+              onChange={(e) => onChange("OUTRO", e.target.value)}
+              placeholder="Digite o item..."
+              className="mt-2 w-full rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm outline-none"
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =====================================================
+   HOME PAGE
+===================================================== */
 
 export default function Home() {
   const [clubPass, setClubPass] = useState("");
@@ -299,19 +411,37 @@ export default function Home() {
 
   // Pedidos
   const [orderKind, setOrderKind] = useState<OrderKind>("EXTERNO");
-  const [orderItem, setOrderItem] = useState("");
+
+  // item como dropdown (preset) + fallback "OUTRO"
+  const [orderItemOption, setOrderItemOption] = useState<ItemOption>("OUTRO");
+  const [orderItemCustom, setOrderItemCustom] = useState("");
+
   const [orderQty, setOrderQty] = useState<number>(1);
-  const [orderPartyOption, setOrderPartyOption] =
-    useState<OrgOption>(ORGS[0]);
-  const [orderPartyCustom, setOrderPartyCustom] = useState("");
+
+  // party dinâmico:
+  // - EXTERNO: ORGS
+  // - INTERNO: MEMBERS
+  const [orderPartyOrgOption, setOrderPartyOrgOption] = useState<OrgOption>(
+    ORGS[0]
+  );
+  const [orderPartyOrgCustom, setOrderPartyOrgCustom] = useState("");
+
+  const [orderPartyMemberId, setOrderPartyMemberId] = useState<number>(
+    MEMBERS[0]?.id ?? 1
+  );
+
   const [orderNotes, setOrderNotes] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
 
-  // ocultar pedidos por perfil
+  // ocultar por perfil
   const [hiddenOrderIds, setHiddenOrderIds] = useState<Set<string>>(new Set());
+  const [hiddenVaultIds, setHiddenVaultIds] = useState<Set<string>>(new Set());
 
   function hiddenOrdersKey(mid: number) {
     return `hiddenOrders:${mid}`;
+  }
+  function hiddenVaultKey(mid: number) {
+    return `hiddenVault:${mid}`;
   }
 
   function hideOrderForMe(orderId: string) {
@@ -328,13 +458,6 @@ export default function Home() {
     });
   }
 
-  // ocultar baú por perfil
-  const [hiddenVaultIds, setHiddenVaultIds] = useState<Set<string>>(new Set());
-
-  function hiddenVaultKey(mid: number) {
-    return `hiddenVault:${mid}`;
-  }
-
   function hideVaultForMe(vaultId: string) {
     if (!loggedMember) return;
 
@@ -349,7 +472,28 @@ export default function Home() {
     });
   }
 
-  // carregar hidden sets quando troca de perfil
+  // Carrega estado inicial
+  useEffect(() => {
+    const savedMember = localStorage.getItem("loggedMember");
+    if (savedMember) setLoggedMember(JSON.parse(savedMember));
+
+    const savedVault = localStorage.getItem("vaultLogs");
+    if (savedVault) setVaultLogs(JSON.parse(savedVault));
+
+    const savedOrders = localStorage.getItem("orders");
+    if (savedOrders) setOrders(JSON.parse(savedOrders));
+  }, []);
+
+  // Persist
+  useEffect(() => {
+    localStorage.setItem("vaultLogs", JSON.stringify(vaultLogs));
+  }, [vaultLogs]);
+
+  useEffect(() => {
+    localStorage.setItem("orders", JSON.stringify(orders));
+  }, [orders]);
+
+  // Sempre que troca o perfil, recarrega o que foi ocultado por aquele membro
   useEffect(() => {
     if (!loggedMember) return;
 
@@ -374,24 +518,14 @@ export default function Home() {
     }
   }, [loggedMember]);
 
+  // Quando muda para INTERNO, força party = member; quando volta EXTERNO, party = org
   useEffect(() => {
-    const savedMember = localStorage.getItem("loggedMember");
-    if (savedMember) setLoggedMember(JSON.parse(savedMember));
-
-    const savedVault = localStorage.getItem("vaultLogs");
-    if (savedVault) setVaultLogs(JSON.parse(savedVault));
-
-    const savedOrders = localStorage.getItem("orders");
-    if (savedOrders) setOrders(JSON.parse(savedOrders));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("vaultLogs", JSON.stringify(vaultLogs));
-  }, [vaultLogs]);
-
-  useEffect(() => {
-    localStorage.setItem("orders", JSON.stringify(orders));
-  }, [orders]);
+    if (orderKind === "INTERNO") {
+      setOrderPartyMemberId((prev) => prev ?? (MEMBERS[0]?.id ?? 1));
+    } else {
+      setOrderPartyOrgOption((prev) => prev ?? ORGS[0]);
+    }
+  }, [orderKind]);
 
   const selectedMember = useMemo(
     () => MEMBERS.find((m) => m.id === memberId)!,
@@ -448,7 +582,11 @@ export default function Home() {
           title: `📦 BAÚ (${vaultTitle(vaultDirection)})`,
           color: vaultColor(vaultDirection),
           fields: [
-            { name: "⠀", value: `**👤 NOME:** ${loggedMember.name}`, inline: true },
+            {
+              name: "⠀",
+              value: `**👤 NOME:** ${loggedMember.name}`,
+              inline: true,
+            },
             { name: "⠀", value: `**📦 ITEM:** ${log.item}`, inline: true },
             { name: "⠀", value: `**🔢 QUANTIDADE:** ${log.qty}`, inline: true },
             { name: "📍 ONDE:", value: log.where || "-", inline: false },
@@ -473,17 +611,30 @@ export default function Home() {
       return;
     }
 
-    if (!orderItem.trim()) return;
+    const finalItem = resolveItem(orderItemOption, orderItemCustom);
+    if (!finalItem) return;
 
-    const party = resolveParty(orderPartyOption, orderPartyCustom);
-    if (orderPartyOption === "OUTRO" && !party) return;
+    let party = "";
+    let partyType: OrderPartyType = "ORG";
+
+    if (orderKind === "INTERNO") {
+      const member = MEMBERS.find((m) => m.id === orderPartyMemberId);
+      party = member?.name ?? "";
+      partyType = "MEMBER";
+      if (!party) return;
+    } else {
+      party = resolvePartyFromOrg(orderPartyOrgOption, orderPartyOrgCustom);
+      partyType = "ORG";
+      if (orderPartyOrgOption === "OUTRO" && !party) return;
+    }
 
     const order: Order = {
       id: crypto.randomUUID(),
       when: nowBR(),
       kind: orderKind,
-      item: orderItem.trim(),
+      item: finalItem,
       qty: orderQty,
+      partyType,
       party,
       notes: orderNotes.trim(),
       by: loggedMember.name,
@@ -497,7 +648,11 @@ export default function Home() {
           title: `🧾 PEDIDO (${order.kind})`,
           color: orderColor(order.kind),
           fields: [
-            { name: "⠀", value: `**👤 NOME:** ${loggedMember.name}`, inline: true },
+            {
+              name: "⠀",
+              value: `**👤 NOME:** ${loggedMember.name}`,
+              inline: true,
+            },
             { name: "⠀", value: `**📦 ITEM:** ${order.item}`, inline: true },
             { name: "⠀", value: `**🔢 QUANTIDADE:** ${order.qty}`, inline: true },
             { name: "🏷️ PARA:", value: order.party || "-", inline: false },
@@ -507,11 +662,18 @@ export default function Home() {
       ],
     });
 
-    setOrderItem("");
     setOrderQty(1);
-    setOrderPartyOption(ORGS[0]);
-    setOrderPartyCustom("");
     setOrderNotes("");
+
+    setOrderItemOption("OUTRO");
+    setOrderItemCustom("");
+
+    if (orderKind === "EXTERNO") {
+      setOrderPartyOrgOption(ORGS[0]);
+      setOrderPartyOrgCustom("");
+    } else {
+      setOrderPartyMemberId(MEMBERS[0]?.id ?? 1);
+    }
   }
 
   const visibleOrders = useMemo(() => {
@@ -536,6 +698,13 @@ export default function Home() {
     { value: "EXTERNO", label: "Externo" },
     { value: "INTERNO", label: "Interno" },
   ];
+
+  const orderMemberTargetOptions: DropOption<number>[] = MEMBERS.map((m) => ({
+    value: m.id,
+    label: m.name,
+  }));
+
+  const itemOptions = ITEMS.map((it) => String(it));
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6 select-none">
@@ -623,7 +792,7 @@ export default function Home() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* BAÚ */}
-              <section className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4 overflow-visible">
+              <section className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
                 <h2 className="text-lg font-semibold">📦 Log do Baú</h2>
 
                 <form onSubmit={addVaultLog} className="mt-3 grid gap-3">
@@ -693,22 +862,18 @@ export default function Home() {
                     visibleVaultLogs.map((log) => (
                       <div
                         key={log.id}
-                        className="group relative rounded-xl border border-white/10 bg-black/20 p-3 pb-8 pr-10 text-sm transition
-                                   hover:bg-black/25 hover:border-white/15 hover:-translate-y-[1px] hover:shadow-lg"
+                        className="relative rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
                       >
-                        {/* X (só no hover) */}
                         <button
                           type="button"
                           onClick={() => hideVaultForMe(log.id)}
                           title="Ocultar deste perfil"
-                          className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300
-                                     hover:bg-red-500/25 flex items-center justify-center leading-none z-10
-                                     opacity-0 group-hover:opacity-100 transition"
+                          className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
                         >
                           ×
                         </button>
 
-                        <div className="font-medium">
+                        <div className="font-medium pr-10">
                           {log.direction} — {log.item} x{log.qty}
                         </div>
 
@@ -717,18 +882,15 @@ export default function Home() {
                             Onde: {log.where}
                           </div>
                         )}
-
                         {log.obs && (
                           <div className="text-white/70 mt-1">
                             Obs: {log.obs}
                           </div>
                         )}
 
-                        <div className="text-white/60 mt-1">Por: {log.by}</div>
-
-                        {/* Data/hora no canto inferior direito */}
-                        <div className="absolute bottom-2 right-3 text-[10px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60">
-                          {log.when}
+                        <div className="mt-2 flex items-end justify-between">
+                          <div className="text-white/60">Por: {log.by}</div>
+                          <div className="text-white/50 text-xs">{log.when}</div>
                         </div>
                       </div>
                     ))
@@ -737,7 +899,7 @@ export default function Home() {
               </section>
 
               {/* PEDIDOS */}
-              <section className="rounded-2xl border border-white/10 bg-white/5 p-4 overflow-visible">
+              <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <h2 className="text-lg font-semibold">🧾 Pedidos</h2>
 
                 <form onSubmit={addOrder} className="mt-3 grid gap-3">
@@ -752,12 +914,30 @@ export default function Home() {
 
                   <div>
                     <label className="block text-sm text-white/80">Item</label>
-                    <input
-                      value={orderItem}
-                      onChange={(e) => setOrderItem(e.target.value)}
-                      placeholder="Ex: Colete"
-                      className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
-                    />
+
+                    {itemOptions.length > 0 ? (
+                      <div className="mt-1">
+                        <ItemDropdown
+                          value={orderItemOption}
+                          customValue={orderItemCustom}
+                          onChange={(opt, custom) => {
+                            setOrderItemOption(opt);
+                            if (opt === "OUTRO") setOrderItemCustom(custom ?? "");
+                            else setOrderItemCustom("");
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        value={orderItemCustom}
+                        onChange={(e) => {
+                          setOrderItemOption("OUTRO");
+                          setOrderItemCustom(e.target.value);
+                        }}
+                        placeholder="(Sem itens cadastrados) digite o item..."
+                        className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -775,18 +955,30 @@ export default function Home() {
 
                   <div>
                     <label className="block text-sm text-white/80">
-                      Organização / Parte
+                      {orderKind === "INTERNO"
+                        ? "Membro do clube"
+                        : "Organização / Parte"}
                     </label>
 
-                    <OrgDropdown
-                      value={orderPartyOption}
-                      customValue={orderPartyCustom}
-                      onChange={(opt, custom) => {
-                        setOrderPartyOption(opt);
-                        if (opt === "OUTRO") setOrderPartyCustom(custom ?? "");
-                        else setOrderPartyCustom("");
-                      }}
-                    />
+                    {orderKind === "INTERNO" ? (
+                      <NiceSelect<number>
+                        value={orderPartyMemberId}
+                        options={orderMemberTargetOptions}
+                        onChange={(v) => setOrderPartyMemberId(v)}
+                        searchable
+                        searchPlaceholder="Buscar membro..."
+                      />
+                    ) : (
+                      <OrgDropdown
+                        value={orderPartyOrgOption}
+                        customValue={orderPartyOrgCustom}
+                        onChange={(opt, custom) => {
+                          setOrderPartyOrgOption(opt);
+                          if (opt === "OUTRO") setOrderPartyOrgCustom(custom ?? "");
+                          else setOrderPartyOrgCustom("");
+                        }}
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -808,45 +1000,40 @@ export default function Home() {
 
                 <div className="mt-4 space-y-2">
                   {orders.length === 0 ? (
-                    <div className="text-sm text-white/60">
-                      Sem pedidos ainda.
-                    </div>
+                    <div className="text-sm text-white/60">Sem pedidos ainda.</div>
                   ) : (
                     visibleOrders.map((o) => (
                       <div
                         key={o.id}
-                        className="group relative rounded-xl border border-white/10 bg-black/20 p-3 pb-8 pr-10 text-sm transition
-                                   hover:bg-black/25 hover:border-white/15 hover:-translate-y-[1px] hover:shadow-lg"
+                        className="relative rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
                       >
-                        {/* X (só no hover) */}
                         <button
                           type="button"
                           onClick={() => hideOrderForMe(o.id)}
                           title="Ocultar deste perfil"
-                          className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300
-                                     hover:bg-red-500/25 flex items-center justify-center leading-none z-10
-                                     opacity-0 group-hover:opacity-100 transition"
+                          className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
                         >
                           ×
                         </button>
 
-                        <div className="font-medium">
+                        <div className="font-medium pr-10">
                           {o.kind} — {o.item} x{o.qty}
                         </div>
 
                         <div className="text-white/70 mt-1">
-                          Parte: {o.party || "-"}
+                          Para: {o.party || "-"}{" "}
+                          <span className="text-white/40">
+                            ({o.partyType === "MEMBER" ? "membro" : "org"})
+                          </span>
                         </div>
 
                         {o.notes && (
                           <div className="text-white/70 mt-1">{o.notes}</div>
                         )}
 
-                        <div className="text-white/60 mt-1">Por: {o.by}</div>
-
-                        {/* Data/hora no canto inferior direito (premium igual) */}
-                        <div className="absolute bottom-2 right-3 text-[10px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/60">
-                          {o.when}
+                        <div className="mt-2 flex items-end justify-between">
+                          <div className="text-white/60">Por: {o.by}</div>
+                          <div className="text-white/50 text-xs">{o.when}</div>
                         </div>
                       </div>
                     ))
