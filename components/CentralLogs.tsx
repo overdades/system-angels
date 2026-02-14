@@ -1,27 +1,13 @@
 "use client";
 
-import { CentralTab, Order, VaultLog } from "@/lib/types";
-import { NiceSelect } from "@/components/ui/NiceSelect";
+import { NiceSelect } from "../components/NiceSelect";
+import type { DropOption } from "../components/NiceSelect";
+import type { VaultLog } from "@/hooks/useVaultData";
+import type { Order } from "@/hooks/useOrdersData";
 
-export function CentralLogs({
-  centralTab,
-  setCentralTab,
-  centralSearch,
-  setCentralSearch,
-  centralBy,
-  setCentralBy,
-  centralItem,
-  setCentralItem,
-  centralParty,
-  setCentralParty,
-  memberNameOptions,
-  itemFilterOptions,
-  partyFilterOptions,
-  centralVault,
-  centralOrders,
-  hideVaultForMe,
-  hideOrderForMe,
-}: {
+type CentralTab = "TODOS" | "BAU" | "PEDIDOS";
+
+export function CentralLogs(props: {
   centralTab: CentralTab;
   setCentralTab: (v: CentralTab) => void;
 
@@ -37,16 +23,44 @@ export function CentralLogs({
   centralParty: string;
   setCentralParty: (v: string) => void;
 
-  memberNameOptions: { value: string; label: string }[];
-  itemFilterOptions: { value: string; label: string }[];
-  partyFilterOptions: { value: string; label: string }[];
+  memberNameOptions: DropOption<string>[];
+  itemFilterOptions: DropOption<string>[];
+  partyFilterOptions: DropOption<string>[];
 
   centralVault: VaultLog[];
   centralOrders: Order[];
 
   hideVaultForMe: (id: string) => void;
   hideOrderForMe: (id: string) => void;
+
+  // ✅ NOVO
+  isAdminAuthed: boolean;
+  deleteVaultLog: (id: string) => Promise<void>;
+  deleteOrder: (id: string) => Promise<void>;
 }) {
+  const {
+    centralTab,
+    setCentralTab,
+    centralSearch,
+    setCentralSearch,
+    centralBy,
+    setCentralBy,
+    centralItem,
+    setCentralItem,
+    centralParty,
+    setCentralParty,
+    memberNameOptions,
+    itemFilterOptions,
+    partyFilterOptions,
+    centralVault,
+    centralOrders,
+    hideVaultForMe,
+    hideOrderForMe,
+    isAdminAuthed,
+    deleteVaultLog,
+    deleteOrder,
+  } = props;
+
   return (
     <section className="lg:col-span-4 rounded-2xl border border-white/10 bg-white/5 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -138,6 +152,7 @@ export function CentralLogs({
                     key={log.id}
                     className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
                   >
+                    {/* ocultar por perfil */}
                     <button
                       type="button"
                       onClick={() => hideVaultForMe(log.id)}
@@ -147,6 +162,26 @@ export function CentralLogs({
                       ×
                     </button>
 
+                    {/* ✅ deletar só admin */}
+                    {isAdminAuthed && (
+                      <button
+                        type="button"
+                        title="Apagar (admin)"
+                        className="absolute left-2 top-2 h-6 px-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs"
+                        onClick={async () => {
+                          const ok = confirm("Apagar esse registro do BAÚ do banco?");
+                          if (!ok) return;
+                          try {
+                            await deleteVaultLog(log.id);
+                          } catch (e: any) {
+                            alert(e?.message ?? "Erro ao apagar.");
+                          }
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    )}
+
                     <div className="font-medium pr-10">
                       {log.direction} — {log.item} x{log.qty}
                     </div>
@@ -154,10 +189,7 @@ export function CentralLogs({
                     {log.where_text && (
                       <div className="text-white/70 mt-1">Onde: {log.where_text}</div>
                     )}
-
-                    {log.obs && (
-                      <div className="text-white/70 mt-1">Obs: {log.obs}</div>
-                    )}
+                    {log.obs && <div className="text-white/70 mt-1">Obs: {log.obs}</div>}
 
                     <div className="mt-2 flex items-end justify-between">
                       <div className="text-white/60">Por: {log.by_text}</div>
@@ -186,6 +218,7 @@ export function CentralLogs({
                     key={o.id}
                     className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
                   >
+                    {/* ocultar por perfil */}
                     <button
                       type="button"
                       onClick={() => hideOrderForMe(o.id)}
@@ -194,6 +227,26 @@ export function CentralLogs({
                     >
                       ×
                     </button>
+
+                    {/* ✅ deletar só admin */}
+                    {isAdminAuthed && (
+                      <button
+                        type="button"
+                        title="Apagar (admin)"
+                        className="absolute left-2 top-2 h-6 px-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs"
+                        onClick={async () => {
+                          const ok = confirm("Apagar esse PEDIDO do banco?");
+                          if (!ok) return;
+                          try {
+                            await deleteOrder(o.id);
+                          } catch (e: any) {
+                            alert(e?.message ?? "Erro ao apagar.");
+                          }
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    )}
 
                     <div className="font-medium pr-10">
                       {o.kind} — {o.item} x{o.qty}
