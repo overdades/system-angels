@@ -49,8 +49,32 @@ type WebhookChannel = "vault" | "orders";
 const CLUB_PASSWORD = "jgcalvo";
 
 const MEMBERS: Member[] = [
-  { id: 1, name: "DRK", pin: "1111" },
-  { id: 2, name: "OVER", pin: "2222" },
+  { id: 1, name: "Drk", pin: "aoddrk" },
+  { id: 2, name: "Nando", pin: "aodnando" },
+  { id: 3, name: "Aurora", pin: "aodaurora"},
+  { id: 4, name: "Roxy", pin: "aodroxy"},
+  { id: 5, name: "Rachi", pin: "aodrachi"},
+  { id: 6, name: "Lucena", pin: "aodlucena"},
+  { id: 7, name: "Kah", pin: "aodkah"},
+  { id: 8, name: "Arq", pin: "aodarq"},
+  { id: 9, name: "Jg", pin: "aodjg"},
+  { id: 10, name: "Sky", pin: "aodsky"},
+  { id: 11, name: "Jdl", pin: "aodjdl"},
+  { id: 12, name: "Slx", pin: "aodslx"},
+  { id: 13, name: "Fubuka", pin: "aodfubuka"},
+  { id: 14, name: "Atlas", pin: "aodatlas"},
+  { id: 15, name: "Dalcin", pin: "aoddalcin"},
+  { id: 16, name: "Braga", pin: "aodbraga"},
+  { id: 17, name: "Bomber", pin: "aodbomber"},
+  { id: 18, name: "Goop", pin: "aodgoop"},
+  { id: 19, name: "Mavi", pin: "aodmavi"},
+  { id: 20, name: "Over", pin: "aodover"},
+  { id: 21, name: "Pitta", pin: "aodpitta"},
+  { id: 22, name: "Soso", pin: "aodsoso"},
+  { id: 23, name: "Speed", pin: "aodspeed"},
+  { id: 24, name: "Clecle", pin: "aodclecle"},
+  { id: 25, name: "Will", pin: "aodwill"},
+  { id: 26, name: "Ryss", pin: "aodryss"},
 ];
 
 const ORDER_ALLOWED_IDS = new Set<number>([1, 2]);
