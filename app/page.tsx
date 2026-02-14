@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
    TYPES
 ===================================================== */
 
-type Member = { id: number; name: string; pin: string };
+type Member = { id: number; name: string; pin: string; mustChangePin: boolean };
 
 type VaultDirection = "ENTRADA" | "SAIDA";
 
@@ -33,7 +33,7 @@ type Order = {
   item: string;
   qty: number;
 
-  partyType: OrderPartyType; // ✅ NOVO (corrige erro do TS)
+  partyType: OrderPartyType;
   party: string;
 
   notes: string;
@@ -49,32 +49,32 @@ type WebhookChannel = "vault" | "orders";
 const CLUB_PASSWORD = "jgcalvo";
 
 const MEMBERS: Member[] = [
-  { id: 1, name: "Drk", pin: "aoddrk" },
-  { id: 2, name: "Nando", pin: "aodnando" },
-  { id: 3, name: "Aurora", pin: "aodaurora"},
-  { id: 4, name: "Roxy", pin: "aodroxy"},
-  { id: 5, name: "Rachi", pin: "aodrachi"},
-  { id: 6, name: "Lucena", pin: "aodlucena"},
-  { id: 7, name: "Kah", pin: "aodkah"},
-  { id: 8, name: "Arq", pin: "aodarq"},
-  { id: 9, name: "Jg", pin: "aodjg"},
-  { id: 10, name: "Sky", pin: "aodsky"},
-  { id: 11, name: "Jdl", pin: "aodjdl"},
-  { id: 12, name: "Slx", pin: "aodslx"},
-  { id: 13, name: "Fubuka", pin: "aodfubuka"},
-  { id: 14, name: "Atlas", pin: "aodatlas"},
-  { id: 15, name: "Dalcin", pin: "aoddalcin"},
-  { id: 16, name: "Braga", pin: "aodbraga"},
-  { id: 17, name: "Bomber", pin: "aodbomber"},
-  { id: 18, name: "Goop", pin: "aodgoop"},
-  { id: 19, name: "Mavi", pin: "aodmavi"},
-  { id: 20, name: "Over", pin: "aodover"},
-  { id: 21, name: "Pitta", pin: "aodpitta"},
-  { id: 22, name: "Soso", pin: "aodsoso"},
-  { id: 23, name: "Speed", pin: "aodspeed"},
-  { id: 24, name: "Clecle", pin: "aodclecle"},
-  { id: 25, name: "Will", pin: "aodwill"},
-  { id: 26, name: "Ryss", pin: "aodryss"},
+  { id: 1, name: "Drk", pin: "aoddrk", mustChangePin: true },
+  { id: 2, name: "Nando", pin: "aodnando", mustChangePin: true },
+  { id: 3, name: "Aurora", pin: "aodaurora", mustChangePin: true },
+  { id: 4, name: "Roxy", pin: "aodroxy", mustChangePin: true },
+  { id: 5, name: "Rachi", pin: "aodrachi", mustChangePin: true },
+  { id: 6, name: "Lucena", pin: "aodlucena", mustChangePin: true },
+  { id: 7, name: "Kah", pin: "aodkah", mustChangePin: true },
+  { id: 8, name: "Arq", pin: "aodarq", mustChangePin: true },
+  { id: 9, name: "Jg", pin: "aodjg", mustChangePin: true },
+  { id: 10, name: "Sky", pin: "aodsky", mustChangePin: true },
+  { id: 11, name: "Jdl", pin: "aodjdl", mustChangePin: true },
+  { id: 12, name: "Slx", pin: "aodslx", mustChangePin: true },
+  { id: 13, name: "Fubuka", pin: "aodfubuka", mustChangePin: true },
+  { id: 14, name: "Atlas", pin: "aodatlas", mustChangePin: true },
+  { id: 15, name: "Dalcin", pin: "aoddalcin", mustChangePin: true },
+  { id: 16, name: "Braga", pin: "aodbraga", mustChangePin: true },
+  { id: 17, name: "Bomber", pin: "aodbomber", mustChangePin: true },
+  { id: 18, name: "Goop", pin: "aodgoop", mustChangePin: true },
+  { id: 19, name: "Mavi", pin: "aodmavi", mustChangePin: true },
+  { id: 20, name: "Over", pin: "aodover", mustChangePin: true },
+  { id: 21, name: "Pitta", pin: "aodpitta", mustChangePin: true },
+  { id: 22, name: "Soso", pin: "aodsoso", mustChangePin: true },
+  { id: 23, name: "Speed", pin: "aodspeed", mustChangePin: true },
+  { id: 24, name: "Clecle", pin: "aodclecle", mustChangePin: true },
+  { id: 25, name: "Will", pin: "aodwill", mustChangePin: true },
+  { id: 26, name: "Ryss", pin: "aodryss", mustChangePin: true },
 ];
 
 const ORDER_ALLOWED_IDS = new Set<number>([1, 2]);
@@ -98,11 +98,8 @@ const ORGS = [
 
 type OrgOption = (typeof ORGS)[number] | "OUTRO";
 
-// item presets (deixa vazio e preenche depois)
-const ITEMS = [
-  "1911",
-  "Munição 9mm",
-] as const;
+// item presets (edita aqui quando quiser)
+const ITEMS = ["1911", "Munição 9mm"] as const;
 
 type ItemPreset = (typeof ITEMS)[number];
 type ItemOption = ItemPreset | "OUTRO";
@@ -119,12 +116,10 @@ function resolveParty(option: OrgOption, custom: string) {
   return option === "OUTRO" ? custom.trim() : option;
 }
 
-// ✅ faltava essa função (corrige erro resolvePartyFromOrg)
 function resolvePartyFromOrg(option: OrgOption, custom: string) {
   return resolveParty(option, custom);
 }
 
-// ✅ faltava essa função (corrige erro resolveItem)
 function resolveItem(option: ItemOption, custom: string) {
   if (option === "OUTRO") return custom.trim();
   return String(option);
@@ -163,7 +158,6 @@ type DropOption<T extends string | number> = {
   label: string;
 };
 
-// fecha dropdown ao clicar fora / ESC
 function useCloseOnOutsideClick(open: boolean, setOpen: (v: boolean) => void) {
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -339,7 +333,7 @@ function OrgDropdown({
 }
 
 /* =====================================================
-   ITEM DROPDOWN (usado nos PEDIDOS)
+   ITEM DROPDOWN (BAÚ + PEDIDOS)
 ===================================================== */
 
 function ItemDropdown({
@@ -427,9 +421,14 @@ export default function Home() {
   const [loggedMember, setLoggedMember] = useState<Member | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Change Pin
+  const [changingPin, setChangingPin] = useState(false);
+  const [newPin, setNewPin] = useState("");
+
   // Baú
   const [vaultDirection, setVaultDirection] =
     useState<VaultDirection>("ENTRADA");
+
   // Baú: item como preset + "OUTRO"
   const [vaultItemOption, setVaultItemOption] = useState<ItemOption>("OUTRO");
   const [vaultItemCustom, setVaultItemCustom] = useState("");
@@ -442,7 +441,6 @@ export default function Home() {
   // Pedidos
   const [orderKind, setOrderKind] = useState<OrderKind>("EXTERNO");
 
-  // item como dropdown (preset) + fallback "OUTRO"
   const [orderItemOption, setOrderItemOption] = useState<ItemOption>("OUTRO");
   const [orderItemCustom, setOrderItemCustom] = useState("");
 
@@ -502,6 +500,19 @@ export default function Home() {
     });
   }
 
+  // Carrega membros com PIN customizado (sem mutar MEMBERS)
+  const membersWithSavedPins = useMemo<Member[]>(() => {
+    return MEMBERS.map((m) => {
+      const raw = localStorage.getItem(`memberPin:${m.id}`);
+      if (!raw) return m;
+      try {
+        return JSON.parse(raw) as Member;
+      } catch {
+        return m;
+      }
+    });
+  }, []);
+
   // Carrega estado inicial
   useEffect(() => {
     const savedMember = localStorage.getItem("loggedMember");
@@ -551,16 +562,15 @@ export default function Home() {
   // Quando muda para INTERNO, força party = member; quando volta EXTERNO, party = org
   useEffect(() => {
     if (orderKind === "INTERNO") {
-      setOrderPartyMemberId((prev) => prev ?? (MEMBERS[0]?.id ?? 1));
+      setOrderPartyMemberId((prev) => prev ?? (membersWithSavedPins[0]?.id ?? 1));
     } else {
       setOrderPartyOrgOption((prev) => prev ?? ORGS[0]);
     }
-  }, [orderKind]);
+  }, [orderKind, membersWithSavedPins]);
 
-  const selectedMember = useMemo(
-    () => MEMBERS.find((m) => m.id === memberId)!,
-    [memberId]
-  );
+  const selectedMember = useMemo(() => {
+    return membersWithSavedPins.find((m) => m.id === memberId)!;
+  }, [memberId, membersWithSavedPins]);
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -576,6 +586,11 @@ export default function Home() {
       return;
     }
 
+    if (selectedMember.mustChangePin) {
+      setChangingPin(true);
+      return;
+    }
+
     setLoggedMember(selectedMember);
     localStorage.setItem("loggedMember", JSON.stringify(selectedMember));
   }
@@ -588,12 +603,35 @@ export default function Home() {
     setError(null);
   }
 
+  function confirmNewPin(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (!newPin.trim()) {
+      setError("Digite um novo PIN.");
+      return;
+    }
+
+    const updatedMember: Member = {
+      ...selectedMember,
+      pin: newPin.trim(),
+      mustChangePin: false,
+    };
+
+    localStorage.setItem(`memberPin:${updatedMember.id}`, JSON.stringify(updatedMember));
+    localStorage.setItem("loggedMember", JSON.stringify(updatedMember));
+
+    setLoggedMember(updatedMember);
+    setChangingPin(false);
+    setNewPin("");
+  }
+
   async function addVaultLog(e: React.FormEvent) {
     e.preventDefault();
     if (!loggedMember) return;
+
     const finalVaultItem = resolveItem(vaultItemOption, vaultItemCustom);
     if (!finalVaultItem) return;
-
 
     const log: VaultLog = {
       id: crypto.randomUUID(),
@@ -614,11 +652,7 @@ export default function Home() {
           title: `📦 BAÚ (${vaultTitle(vaultDirection)})`,
           color: vaultColor(vaultDirection),
           fields: [
-            {
-              name: "⠀",
-              value: `**👤 NOME:** ${loggedMember.name}`,
-              inline: true,
-            },
+            { name: "⠀", value: `**👤 NOME:** ${loggedMember.name}`, inline: true },
             { name: "⠀", value: `**📦 ITEM:** ${log.item}`, inline: true },
             { name: "⠀", value: `**🔢 QUANTIDADE:** ${log.qty}`, inline: true },
             { name: "📍 ONDE:", value: log.where || "-", inline: false },
@@ -630,7 +664,6 @@ export default function Home() {
 
     setVaultItemOption("OUTRO");
     setVaultItemCustom("");
-
     setVaultQty(1);
     setVaultWhere("");
     setVaultObs("");
@@ -652,7 +685,7 @@ export default function Home() {
     let partyType: OrderPartyType = "ORG";
 
     if (orderKind === "INTERNO") {
-      const member = MEMBERS.find((m) => m.id === orderPartyMemberId);
+      const member = membersWithSavedPins.find((m) => m.id === orderPartyMemberId);
       party = member?.name ?? "";
       partyType = "MEMBER";
       if (!party) return;
@@ -682,11 +715,7 @@ export default function Home() {
           title: `🧾 PEDIDO (${order.kind})`,
           color: orderColor(order.kind),
           fields: [
-            {
-              name: "⠀",
-              value: `**👤 NOME:** ${loggedMember.name}`,
-              inline: true,
-            },
+            { name: "⠀", value: `**👤 NOME:** ${loggedMember.name}`, inline: true },
             { name: "⠀", value: `**📦 ITEM:** ${order.item}`, inline: true },
             { name: "⠀", value: `**🔢 QUANTIDADE:** ${order.qty}`, inline: true },
             { name: "🏷️ PARA:", value: order.party || "-", inline: false },
@@ -698,7 +727,6 @@ export default function Home() {
 
     setOrderQty(1);
     setOrderNotes("");
-
     setOrderItemOption("OUTRO");
     setOrderItemCustom("");
 
@@ -706,7 +734,7 @@ export default function Home() {
       setOrderPartyOrgOption(ORGS[0]);
       setOrderPartyOrgCustom("");
     } else {
-      setOrderPartyMemberId(MEMBERS[0]?.id ?? 1);
+      setOrderPartyMemberId(membersWithSavedPins[0]?.id ?? 1);
     }
   }
 
@@ -718,7 +746,7 @@ export default function Home() {
     return vaultLogs.filter((v) => !hiddenVaultIds.has(v.id));
   }, [vaultLogs, hiddenVaultIds]);
 
-  const memberOptions: DropOption<number>[] = MEMBERS.map((m) => ({
+  const memberOptions: DropOption<number>[] = membersWithSavedPins.map((m) => ({
     value: m.id,
     label: m.name,
   }));
@@ -733,12 +761,13 @@ export default function Home() {
     { value: "INTERNO", label: "Interno" },
   ];
 
-  const orderMemberTargetOptions: DropOption<number>[] = MEMBERS.map((m) => ({
+  const orderMemberTargetOptions: DropOption<number>[] = membersWithSavedPins.map((m) => ({
     value: m.id,
     label: m.name,
   }));
 
-  const itemOptions = ITEMS.map((it) => String(it));
+  // ======= FIX TS: member guard =======
+  const member = loggedMember;
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6 select-none">
@@ -753,7 +782,28 @@ export default function Home() {
           />
         </div>
 
-        {!loggedMember ? (
+        {changingPin ? (
+          <form onSubmit={confirmNewPin} className="space-y-4 max-w-md mt-6">
+            <h2 className="text-lg font-semibold">Crie seu PIN pessoal</h2>
+
+            <input
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value)}
+              placeholder="Novo PIN"
+              className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
+            />
+
+            {error && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm">
+                {error}
+              </div>
+            )}
+
+            <button className="w-full rounded-xl bg-white text-black py-2">
+              Confirmar novo PIN
+            </button>
+          </form>
+        ) : !member ? (
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <form onSubmit={handleLogin} className="space-y-4 max-w-md">
               <div>
@@ -810,10 +860,8 @@ export default function Home() {
             <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-3">
               <div>
                 <div className="text-sm text-white/70">Logado como</div>
-                <div className="text-lg font-semibold">{loggedMember.name}</div>
-                <div className="text-xs text-white/60">
-                  ID: {loggedMember.id}
-                </div>
+                <div className="text-lg font-semibold">{member.name}</div>
+                <div className="text-xs text-white/60">ID: {member.id}</div>
               </div>
 
               <button
@@ -842,7 +890,6 @@ export default function Home() {
                   <div>
                     <label className="block text-sm text-white/80">Item</label>
 
-                    {/* Se tiver itens cadastrados: dropdown com "Outro..." */}
                     {(ITEMS as readonly string[]).length > 0 ? (
                       <div className="mt-1">
                         <ItemDropdown
@@ -856,7 +903,6 @@ export default function Home() {
                         />
                       </div>
                     ) : (
-                      /* Se ITEMS estiver vazio, cai pro input pra você não travar */
                       <input
                         value={vaultItemCustom}
                         onChange={(e) => {
@@ -869,11 +915,8 @@ export default function Home() {
                     )}
                   </div>
 
-
                   <div>
-                    <label className="block text-sm text-white/80">
-                      Quantidade
-                    </label>
+                    <label className="block text-sm text-white/80">Quantidade</label>
                     <input
                       type="number"
                       min={1}
@@ -910,9 +953,7 @@ export default function Home() {
 
                 <div className="mt-4 space-y-2">
                   {vaultLogs.length === 0 ? (
-                    <div className="text-sm text-white/60">
-                      Sem registros ainda.
-                    </div>
+                    <div className="text-sm text-white/60">Sem registros ainda.</div>
                   ) : (
                     visibleVaultLogs.map((log) => (
                       <div
@@ -933,14 +974,10 @@ export default function Home() {
                         </div>
 
                         {log.where && (
-                          <div className="text-white/70 mt-1">
-                            Onde: {log.where}
-                          </div>
+                          <div className="text-white/70 mt-1">Onde: {log.where}</div>
                         )}
                         {log.obs && (
-                          <div className="text-white/70 mt-1">
-                            Obs: {log.obs}
-                          </div>
+                          <div className="text-white/70 mt-1">Obs: {log.obs}</div>
                         )}
 
                         <div className="mt-2 flex items-end justify-between">
@@ -970,7 +1007,7 @@ export default function Home() {
                   <div>
                     <label className="block text-sm text-white/80">Item</label>
 
-                    {itemOptions.length > 0 ? (
+                    {(ITEMS as readonly string[]).length > 0 ? (
                       <div className="mt-1">
                         <ItemDropdown
                           value={orderItemOption}
@@ -996,9 +1033,7 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-white/80">
-                      Quantidade
-                    </label>
+                    <label className="block text-sm text-white/80">Quantidade</label>
                     <input
                       type="number"
                       min={1}
@@ -1010,9 +1045,7 @@ export default function Home() {
 
                   <div>
                     <label className="block text-sm text-white/80">
-                      {orderKind === "INTERNO"
-                        ? "Membro do clube"
-                        : "Organização / Parte"}
+                      {orderKind === "INTERNO" ? "Membro do clube" : "Organização / Parte"}
                     </label>
 
                     {orderKind === "INTERNO" ? (
@@ -1037,9 +1070,7 @@ export default function Home() {
                   </div>
 
                   <div>
-                    <label className="block text-sm text-white/80">
-                      Observações
-                    </label>
+                    <label className="block text-sm text-white/80">Observações</label>
                     <input
                       value={orderNotes}
                       onChange={(e) => setOrderNotes(e.target.value)}
@@ -1082,9 +1113,7 @@ export default function Home() {
                           </span>
                         </div>
 
-                        {o.notes && (
-                          <div className="text-white/70 mt-1">{o.notes}</div>
-                        )}
+                        {o.notes && <div className="text-white/70 mt-1">{o.notes}</div>}
 
                         <div className="mt-2 flex items-end justify-between">
                           <div className="text-white/60">Por: {o.by}</div>
