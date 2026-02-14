@@ -500,18 +500,26 @@ export default function Home() {
     });
   }
 
-  // Carrega membros com PIN customizado (sem mutar MEMBERS)
-  const membersWithSavedPins = useMemo<Member[]>(() => {
-    return MEMBERS.map((m) => {
+  // membros "reais" (com pin custom salvo no browser)
+  // default: MEMBERS, depois do mount a gente carrega do localStorage
+  const [membersWithSavedPins, setMembersWithSavedPins] = useState<Member[]>(MEMBERS);
+
+  useEffect(() => {
+    // aqui já é browser, então localStorage existe
+    const loaded = MEMBERS.map((m) => {
       const raw = localStorage.getItem(`memberPin:${m.id}`);
       if (!raw) return m;
+
       try {
         return JSON.parse(raw) as Member;
       } catch {
         return m;
       }
     });
+
+    setMembersWithSavedPins(loaded);
   }, []);
+
 
   // Carrega estado inicial
   useEffect(() => {
