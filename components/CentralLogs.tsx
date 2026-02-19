@@ -1,9 +1,8 @@
 "use client";
 
-import { NiceSelect } from "../components/NiceSelect";
-import type { DropOption } from "../components/NiceSelect";
-import type { VaultLog } from "@/hooks/useVaultData";
-import type { Order } from "@/hooks/useOrdersData";
+import { NiceSelect } from "@/components/NiceSelect";
+import type { DropOption } from "@/components/NiceSelect";
+import type { VaultLog, Order } from "@/hooks/useClubApp";
 
 type CentralTab = "TODOS" | "BAU" | "PEDIDOS";
 
@@ -32,11 +31,6 @@ export function CentralLogs(props: {
 
   hideVaultForMe: (id: string) => void;
   hideOrderForMe: (id: string) => void;
-
-  // ✅ NOVO
-  isAdminAuthed: boolean;
-  deleteVaultLog: (id: string) => Promise<void>;
-  deleteOrder: (id: string) => Promise<void>;
 }) {
   const {
     centralTab,
@@ -56,9 +50,6 @@ export function CentralLogs(props: {
     centralOrders,
     hideVaultForMe,
     hideOrderForMe,
-    isAdminAuthed,
-    deleteVaultLog,
-    deleteOrder,
   } = props;
 
   return (
@@ -140,7 +131,9 @@ export function CentralLogs(props: {
           <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
             <div className="flex items-center justify-between">
               <div className="font-semibold">📦 Baú</div>
-              <div className="text-xs text-white/60">{centralVault.length} resultados</div>
+              <div className="text-xs text-white/60">
+                {centralVault.length} resultados
+              </div>
             </div>
 
             <div className="mt-3 max-h-[380px] overflow-auto space-y-2 pr-1">
@@ -152,7 +145,6 @@ export function CentralLogs(props: {
                     key={log.id}
                     className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
                   >
-                    {/* ocultar por perfil */}
                     <button
                       type="button"
                       onClick={() => hideVaultForMe(log.id)}
@@ -162,38 +154,24 @@ export function CentralLogs(props: {
                       ×
                     </button>
 
-                    {/* ✅ deletar só admin */}
-                    {isAdminAuthed && (
-                      <button
-                        type="button"
-                        title="Apagar (admin)"
-                        className="absolute left-2 top-2 h-6 px-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs"
-                        onClick={async () => {
-                          const ok = confirm("Apagar esse registro do BAÚ do banco?");
-                          if (!ok) return;
-                          try {
-                            await deleteVaultLog(log.id);
-                          } catch (e: any) {
-                            alert(e?.message ?? "Erro ao apagar.");
-                          }
-                        }}
-                      >
-                        🗑️
-                      </button>
-                    )}
-
                     <div className="font-medium pr-10">
                       {log.direction} — {log.item} x{log.qty}
                     </div>
 
                     {log.where_text && (
-                      <div className="text-white/70 mt-1">Onde: {log.where_text}</div>
+                      <div className="text-white/70 mt-1">
+                        Onde: {log.where_text}
+                      </div>
                     )}
-                    {log.obs && <div className="text-white/70 mt-1">Obs: {log.obs}</div>}
+                    {log.obs && (
+                      <div className="text-white/70 mt-1">Obs: {log.obs}</div>
+                    )}
 
                     <div className="mt-2 flex items-end justify-between">
                       <div className="text-white/60">Por: {log.by_text}</div>
-                      <div className="text-white/50 text-xs">{log.created_when}</div>
+                      <div className="text-white/50 text-xs">
+                        {log.created_when}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -206,7 +184,9 @@ export function CentralLogs(props: {
           <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
             <div className="flex items-center justify-between">
               <div className="font-semibold">🧾 Pedidos</div>
-              <div className="text-xs text-white/60">{centralOrders.length} resultados</div>
+              <div className="text-xs text-white/60">
+                {centralOrders.length} resultados
+              </div>
             </div>
 
             <div className="mt-3 max-h-[380px] overflow-auto space-y-2 pr-1">
@@ -218,7 +198,6 @@ export function CentralLogs(props: {
                     key={o.id}
                     className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
                   >
-                    {/* ocultar por perfil */}
                     <button
                       type="button"
                       onClick={() => hideOrderForMe(o.id)}
@@ -227,26 +206,6 @@ export function CentralLogs(props: {
                     >
                       ×
                     </button>
-
-                    {/* ✅ deletar só admin */}
-                    {isAdminAuthed && (
-                      <button
-                        type="button"
-                        title="Apagar (admin)"
-                        className="absolute left-2 top-2 h-6 px-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs"
-                        onClick={async () => {
-                          const ok = confirm("Apagar esse PEDIDO do banco?");
-                          if (!ok) return;
-                          try {
-                            await deleteOrder(o.id);
-                          } catch (e: any) {
-                            alert(e?.message ?? "Erro ao apagar.");
-                          }
-                        }}
-                      >
-                        🗑️
-                      </button>
-                    )}
 
                     <div className="font-medium pr-10">
                       {o.kind} — {o.item} x{o.qty}
@@ -259,11 +218,15 @@ export function CentralLogs(props: {
                       </span>
                     </div>
 
-                    {o.notes && <div className="text-white/70 mt-1">{o.notes}</div>}
+                    {o.notes && (
+                      <div className="text-white/70 mt-1">{o.notes}</div>
+                    )}
 
                     <div className="mt-2 flex items-end justify-between">
                       <div className="text-white/60">Por: {o.by_text}</div>
-                      <div className="text-white/50 text-xs">{o.created_when}</div>
+                      <div className="text-white/50 text-xs">
+                        {o.created_when}
+                      </div>
                     </div>
                   </div>
                 ))

@@ -1,9 +1,6 @@
 "use client";
 
 import { useClubApp } from "@/hooks/useClubApp";
-import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { AdminUnlock } from "@/components/AdminUnlock";
-
 import { LoginCard } from "@/components/LoginCard";
 import { ChangePinCard } from "@/components/ChangePinCard";
 import { HeaderBar } from "@/components/HeaderBar";
@@ -13,15 +10,11 @@ import { OrderForm } from "@/components/OrderForm";
 
 export default function Home() {
   const app = useClubApp();
-  const admin = useAdminAuth(); // ✅ modo admin (Supabase Auth)
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6 select-none">
       <div className="relative w-full max-w-6xl rounded-2xl border border-white/15 bg-white/5 p-6 shadow">
         <h1 className="text-2xl font-bold">ANGELS OF CODES</h1>
-
-        {/* ✅ botão invisível / modal de unlock admin (só quando logado no clube) */}
-        <AdminUnlock enabled={!!app.loggedMember} />
 
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <img
@@ -86,10 +79,6 @@ export default function Home() {
                 centralOrders={app.centralOrders}
                 hideVaultForMe={app.hideVaultForMe}
                 hideOrderForMe={app.hideOrderForMe}
-                /* ✅ NOVO: libera botão 🗑️ só em admin/owner */
-                isAdminAuthed={admin.isAdminAuthed}
-                deleteVaultLog={app.deleteVaultLog}
-                deleteOrder={app.deleteOrder}
               />
 
               <VaultForm
