@@ -113,7 +113,9 @@ export function CentralLogs(props: {
           <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
             <div className="flex items-center justify-between">
               <div className="font-semibold">📦 Baú</div>
-              <div className="text-xs text-white/60">{props.centralVault.length} resultados</div>
+              <div className="text-xs text-white/60">
+                {props.centralVault.length} resultados
+              </div>
             </div>
 
             <div className="mt-3 max-h-[380px] overflow-auto space-y-2 pr-1">
@@ -121,41 +123,61 @@ export function CentralLogs(props: {
                 <div className="text-sm text-white/60">Nada encontrado.</div>
               ) : (
                 props.centralVault.map((log) => (
-                  <div key={log.id} className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm">
-                    <button
-                      type="button"
-                      onClick={() => props.hideVaultForMe(log.id)}
-                      title="Ocultar deste perfil"
-                      className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
-                    >
-                      ×
-                    </button>
+                  <div
+                    key={log.id}
+                    className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
+                  >
+                    {/* ✅ AÇÕES (LIXEIRA + X) NO CANTO DIREITO */}
+                    <div className="absolute right-2 top-2 flex gap-2">
+                      {props.isAdminAuthed && (
+                        <button
+                          type="button"
+                          title="Apagar (admin)"
+                          className="h-6 px-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs"
+                          onClick={async () => {
+                            const ok = confirm(
+                              "Apagar esse registro do BAÚ do banco?"
+                            );
+                            if (!ok) return;
+                            try {
+                              await props.deleteVaultLog(log.id);
+                            } catch (e: any) {
+                              alert(e?.message ?? "Erro ao apagar.");
+                            }
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      )}
 
-                    {props.isAdminAuthed && (
                       <button
                         type="button"
-                        title="Apagar (admin)"
-                        className="absolute left-2 top-2 h-6 px-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs"
-                        onClick={async () => {
-                          const ok = confirm("Apagar esse registro do BAÚ do banco?");
-                          if (!ok) return;
-                          await props.deleteVaultLog(log.id);
-                        }}
+                        onClick={() => props.hideVaultForMe(log.id)}
+                        title="Ocultar deste perfil"
+                        className="h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
                       >
-                        🗑️
+                        ×
                       </button>
-                    )}
+                    </div>
 
-                    <div className="font-medium pr-10">
+                    <div className="font-medium pr-16">
                       {log.direction} — {log.item} x{log.qty}
                     </div>
 
-                    {log.where_text && <div className="text-white/70 mt-1">Onde: {log.where_text}</div>}
-                    {log.obs && <div className="text-white/70 mt-1">Obs: {log.obs}</div>}
+                    {log.where_text && (
+                      <div className="text-white/70 mt-1">
+                        Onde: {log.where_text}
+                      </div>
+                    )}
+                    {log.obs && (
+                      <div className="text-white/70 mt-1">Obs: {log.obs}</div>
+                    )}
 
                     <div className="mt-2 flex items-end justify-between">
                       <div className="text-white/60">Por: {log.by_text}</div>
-                      <div className="text-white/50 text-xs">{log.created_when}</div>
+                      <div className="text-white/50 text-xs">
+                        {log.created_when}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -168,7 +190,9 @@ export function CentralLogs(props: {
           <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
             <div className="flex items-center justify-between">
               <div className="font-semibold">🧾 Pedidos</div>
-              <div className="text-xs text-white/60">{props.centralOrders.length} resultados</div>
+              <div className="text-xs text-white/60">
+                {props.centralOrders.length} resultados
+              </div>
             </div>
 
             <div className="mt-3 max-h-[380px] overflow-auto space-y-2 pr-1">
@@ -176,32 +200,42 @@ export function CentralLogs(props: {
                 <div className="text-sm text-white/60">Nada encontrado.</div>
               ) : (
                 props.centralOrders.map((o) => (
-                  <div key={o.id} className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm">
-                    <button
-                      type="button"
-                      onClick={() => props.hideOrderForMe(o.id)}
-                      title="Ocultar deste perfil"
-                      className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
-                    >
-                      ×
-                    </button>
+                  <div
+                    key={o.id}
+                    className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
+                  >
+                    {/* ✅ AÇÕES (LIXEIRA + X) NO CANTO DIREITO */}
+                    <div className="absolute right-2 top-2 flex gap-2">
+                      {props.isAdminAuthed && (
+                        <button
+                          type="button"
+                          title="Apagar (admin)"
+                          className="h-6 px-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs"
+                          onClick={async () => {
+                            const ok = confirm("Apagar esse PEDIDO do banco?");
+                            if (!ok) return;
+                            try {
+                              await props.deleteOrder(o.id);
+                            } catch (e: any) {
+                              alert(e?.message ?? "Erro ao apagar.");
+                            }
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      )}
 
-                    {props.isAdminAuthed && (
                       <button
                         type="button"
-                        title="Apagar (admin)"
-                        className="absolute left-2 top-2 h-6 px-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs"
-                        onClick={async () => {
-                          const ok = confirm("Apagar esse PEDIDO do banco?");
-                          if (!ok) return;
-                          await props.deleteOrder(o.id);
-                        }}
+                        onClick={() => props.hideOrderForMe(o.id)}
+                        title="Ocultar deste perfil"
+                        className="h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
                       >
-                        🗑️
+                        ×
                       </button>
-                    )}
+                    </div>
 
-                    <div className="font-medium pr-10">
+                    <div className="font-medium pr-16">
                       {o.kind} — {o.item} x{o.qty}
                     </div>
 
@@ -212,11 +246,15 @@ export function CentralLogs(props: {
                       </span>
                     </div>
 
-                    {o.notes && <div className="text-white/70 mt-1">{o.notes}</div>}
+                    {o.notes && (
+                      <div className="text-white/70 mt-1">{o.notes}</div>
+                    )}
 
                     <div className="mt-2 flex items-end justify-between">
                       <div className="text-white/60">Por: {o.by_text}</div>
-                      <div className="text-white/50 text-xs">{o.created_when}</div>
+                      <div className="text-white/50 text-xs">
+                        {o.created_when}
+                      </div>
                     </div>
                   </div>
                 ))

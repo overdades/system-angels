@@ -1,8 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   --bg0: #05040a;
   --bg1: #0a0610;
-  --red1: 220, 38, 38;   /* red-600-ish */
-  --red2: 185, 28, 28;   /* red-700-ish */
+  --red1: 220, 38, 38;
+  --red2: 185, 28, 28;
 }
 
 body {
@@ -17,22 +21,23 @@ body {
   overflow-x: hidden;
 }
 
-/* vinheta (bordas mais escuras) */
+/* vinheta */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background:
-    radial-gradient(120% 85% at 50% 50%,
-      transparent 0%,
-      rgba(0,0,0,0.25) 45%,
-      rgba(0,0,0,0.65) 78%,
-      rgba(0,0,0,0.85) 100%);
+  background: radial-gradient(
+    120% 85% at 50% 50%,
+    transparent 0%,
+    rgba(0, 0, 0, 0.25) 45%,
+    rgba(0, 0, 0, 0.65) 78%,
+    rgba(0, 0, 0, 0.85) 100%
+  );
   z-index: 0;
 }
 
-/* grain/noise por cima */
+/* grain/noise */
 body::after {
   content: "";
   position: fixed;
@@ -42,17 +47,13 @@ body::after {
   opacity: 0.16;
   mix-blend-mode: overlay;
   filter: contrast(120%) brightness(105%);
-
-  /* ruído via SVG embutido (não precisa arquivo) */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
   background-repeat: repeat;
-
-  /* movimento leve pra parecer “vivo” (opcional) */
   animation: grainShift 7s steps(6) infinite;
 }
 
 @keyframes grainShift {
-  0% { transform: translate3d(0,0,0); }
+  0% { transform: translate3d(0, 0, 0); }
   10% { transform: translate3d(-2%, -3%, 0); }
   20% { transform: translate3d(-4%, 2%, 0); }
   30% { transform: translate3d(3%, -4%, 0); }
@@ -62,11 +63,36 @@ body::after {
   70% { transform: translate3d(2%, 5%, 0); }
   80% { transform: translate3d(4%, -2%, 0); }
   90% { transform: translate3d(-1%, -5%, 0); }
-  100% { transform: translate3d(0,0,0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
 
-/* importante: seu app fica acima do fundo */
 body > * {
   position: relative;
   z-index: 2;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-[0_10px_40px_rgba(0,0,0,0.35)];
+  }
+
+  .input {
+    @apply w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2 outline-none focus:border-white/30;
+  }
+
+  .btn-primary {
+    @apply w-full rounded-xl bg-white text-black py-2 font-medium hover:bg-white/90 transition;
+  }
+
+  .btn-ghost {
+    @apply rounded-xl border border-white/15 px-4 py-2 hover:bg-white/5 transition;
+  }
+
+  .chip-active {
+    @apply bg-white text-black border border-white/20;
+  }
+
+  .chip {
+    @apply bg-black/20 border border-white/10 hover:bg-white/5;
+  }
 }
