@@ -1,3 +1,4 @@
+// lib/webhook.ts
 export type WebhookChannel = "vault" | "orders";
 
 export async function postWebhook(channel: WebhookChannel, payload: any) {
@@ -17,61 +18,91 @@ export async function postWebhook(channel: WebhookChannel, payload: any) {
   }
 }
 
-export function buildVaultEmbed(log: {
-  direction: string;
-  item: string;
-  qty: number;
-  where_text: string;
-  obs: string;
-  by_text: string;
-}) {
-  const color = log.direction === "ENTRADA" ? 0x22c55e : 0xef4444;
-
-  return {
-    embeds: [
-      {
-        title: "📦 Registro de Baú",
-        color,
-        fields: [
-          { name: "Tipo", value: log.direction, inline: true },
-          { name: "Item", value: log.item, inline: true },
-          { name: "Qtd", value: String(log.qty), inline: true },
-          { name: "Onde", value: log.where_text || "-", inline: false },
-          { name: "Obs", value: log.obs || "-", inline: false },
-          { name: "Por", value: log.by_text, inline: true },
-        ],
-        timestamp: new Date().toISOString(),
-        footer: { text: "ANGELS OF CODES" },
-      },
-    ],
-  };
+function safe(v: any) {
+  const s = String(v ?? "").trim();
+  return s.length ? s : "-";
 }
 
+function line(label: string, value: string) {
+  // label com emoji e titulo em negrito na mesma linha
+  return `${label} ${value}`;
+}
+
+/**
+ * PEDIDOS – padrão da imagem:
+ * title: "📄 PEDIDO (EXTERNO)" ou "📄 PEDIDO (INTERNO)"
+ * description com linhas "👤 NOME:" "📦 ITEM:" "🔢 QUANTIDADE:" "🏷️ PARA:" "📝 OBS:"
+ * color: EXTERNO azul, INTERNO roxo
+ */
 export function buildOrderEmbed(order: {
-  kind: string;
+  kind: "EXTERNO" | "INTERNO" | string;
   item: string;
   qty: number;
   party: string;
   notes: string;
   by_text: string;
 }) {
-  const color = order.kind === "INTERNO" ? 0x3b82f6 : 0xf59e0b;
+  const kind = String(order.kind).toUpperCase();
+  const isInterno = kind === "INTERNO";
+
+  const color = isInterno ? 0x7c3aed : 0x3b82f6; // roxo / azul
+
+  const desc =
+    [
+      `${line("👤 **NOME:**", `**${safe(order.by_text)}**`)}   ${line("📦 **ITEM:**", `**${safe(order.item)}**`)}   ${line("🔢 **QUANTIDADE:**", `**${safe(order.qty)}**`)}`,
+      "",
+      `${line("🏷️ **PARA:**", `\n${safe(order.party)}`)}`,
+      "",
+      `${line("📝 **OBS:**", `\n${safe(order.notes)}`)}`,
+    ].join("\n");
 
   return {
     embeds: [
       {
-        title: "🧾 Novo Pedido",
+        title: `📄 PEDIDO (${kind})`,
         color,
-        fields: [
-          { name: "Tipo", value: order.kind, inline: true },
-          { name: "Item", value: order.item, inline: true },
-          { name: "Qtd", value: String(order.qty), inline: true },
-          { name: "Para", value: order.party || "-", inline: false },
-          { name: "Obs", value: order.notes || "-", inline: false },
-          { name: "Por", value: order.by_text, inline: true },
-        ],
+        description: desc,
         timestamp: new Date().toISOString(),
-        footer: { text: "ANGELS OF CODES" },
+      },
+    ],
+  };
+}
+
+/**
+ * BAÚ – mesmo padrão visual do pedido:
+ * title: "📦 BAÚ (ENTRADA)" ou "📦 BAÚ (SAIDA)"
+ * description com linhas "👤 NOME:" "📦 ITEM:" "🔢 QUANTIDADE:" "📍 ONDE:" "📝 OBS:"
+ * color: ENTRADA verde, SAIDA vermelho
+ */
+export function buildVaultEmbed(log: {
+  direction: "ENTRADA" | "SAIDA" | string;
+  item: string;
+  qty: number;
+  where_text: string;
+  obs: string;
+  by_text: string;
+}) {
+  const dir = String(log.direction).toUpperCase();
+  const isEntrada = dir === "ENTRADA";
+
+  const color = isEntrada ? 0x22c55e : 0xef4444; // verde / vermelho
+
+  const desc =
+    [
+      `${line("👤 **NOME:**", `**${safe(log.by_text)}**`)}   ${line("📦 **ITEM:**", `**${safe(log.item)}**`)}   ${line("🔢 **QUANTIDADE:**", `**${safe(log.qty)}**`)}`,
+      "",
+      `${line("📍 **ONDE:**", `\n${safe(log.where_text)}`)}`,
+      "",
+      `${line("📝 **OBS:**", `\n${safe(log.obs)}`)}`,
+    ].join("\n");
+
+  return {
+    embeds: [
+      {
+        title: `📦 BAÚ (${dir})`,
+        color,
+        description: desc,
+        timestamp: new Date().toISOString(),
       },
     ],
   };
