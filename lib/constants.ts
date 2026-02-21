@@ -1,4 +1,4 @@
-import { Member } from "./types";
+import type { Member } from "@/lib/types";
 
 export const CLUB_PASSWORD = "jgcalvo";
 
@@ -31,7 +31,11 @@ export const BASE_MEMBERS: Member[] = [
   { id: 26, name: "Ryss", pin: "aodryss", mustChangePin: true },
 ];
 
+// quem pode registrar PEDIDOS (ajuste)
 export const ORDER_ALLOWED_IDS = new Set<number>([1, 2, 20]);
+
+// admins do site (podem deletar registros no banco)
+export const ADMIN_IDS = new Set<number>([1, 2, 20]); // <- coloque aqui os IDs admin
 
 export const ORGS = [
   "Marabunta",
@@ -52,9 +56,27 @@ export const ORGS = [
 export type OrgOption = (typeof ORGS)[number] | "OUTRO";
 
 export const ITEMS = [
-  "1911",
-  "Munição 9mm",
+  ".4 ACP",
+  "Notas Marcadas",
+  "SNS",
+  "Colete",
+  "Linha",
+  "Resina",
+  "Tesoura",
+  "Agulha",
+  "Placa Falsa",
+  "Cobre",
+  "Aluminio",
+  "Borracha",
+  "Sucata",
+  "Kit Eletrônico",
+  "Plástico",
+  "Peça de Roupa",
+  "Caixa de Pólvora",
+  "Laptop",
+  "Telefone Quebrado",
+  "Celular",
+  "Rádio",
 ] as const;
 
-export type ItemPreset = (typeof ITEMS)[number];
-export type ItemOption = ItemPreset | "OUTRO";
+export type ItemOption = (typeof ITEMS)[number] | "OUTRO";

@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
     if (!url) {
       return NextResponse.json(
-        { ok: false, error: "Webhook URL não configurada no .env.local" },
+        { ok: false, error: "Webhook URL não configurada no ambiente." },
         { status: 500 }
       );
     }

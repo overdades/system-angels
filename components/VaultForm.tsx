@@ -1,25 +1,12 @@
 "use client";
 
-import { VaultDirection } from "@/lib/types";
-import { ItemOption, ITEMS } from "@/lib/constants";
-import { NiceSelect } from "@/components/ui/NiceSelect";
+import type { VaultDirection } from "@/lib/types";
+import type { ItemOption } from "@/lib/constants";
+import { ITEMS } from "@/lib/constants";
 import { ItemDropdown } from "@/components/ui/ItemDropdown";
+import { NiceSelect } from "@/components/ui/NiceSelect";
 
-export function VaultForm({
-  vaultDirection,
-  setVaultDirection,
-  vaultItemOption,
-  setVaultItemOption,
-  vaultItemCustom,
-  setVaultItemCustom,
-  vaultQty,
-  setVaultQty,
-  vaultWhere,
-  setVaultWhere,
-  vaultObs,
-  setVaultObs,
-  onSubmit,
-}: {
+export function VaultForm(props: {
   vaultDirection: VaultDirection;
   setVaultDirection: (v: VaultDirection) => void;
 
@@ -46,43 +33,34 @@ export function VaultForm({
   ];
 
   return (
-    <section className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
+    <section className="panel p-4">
       <h2 className="text-lg font-semibold">📦 Registrar Baú</h2>
 
-      <form onSubmit={onSubmit} className="mt-3 grid gap-3">
+      <form onSubmit={props.onSubmit} className="mt-3 grid gap-3">
         <div>
           <label className="block text-sm text-white/80">Tipo</label>
           <NiceSelect<VaultDirection>
-            value={vaultDirection}
+            value={props.vaultDirection}
             options={vaultDirectionOptions}
-            onChange={(v) => setVaultDirection(v)}
+            onChange={props.setVaultDirection}
           />
         </div>
 
         <div>
           <label className="block text-sm text-white/80">Item</label>
+          <ItemDropdown
+            value={props.vaultItemOption}
+            setValue={(v) => props.setVaultItemOption(v as ItemOption)}
+            options={[...ITEMS, "OUTRO"]}
+            placeholder="Buscar item..."
+          />
 
-          {(ITEMS as readonly string[]).length > 0 ? (
-            <div className="mt-1">
-              <ItemDropdown
-                value={vaultItemOption}
-                customValue={vaultItemCustom}
-                onChange={(opt, custom) => {
-                  setVaultItemOption(opt);
-                  if (opt === "OUTRO") setVaultItemCustom(custom ?? "");
-                  else setVaultItemCustom("");
-                }}
-              />
-            </div>
-          ) : (
+          {props.vaultItemOption === "OUTRO" && (
             <input
-              value={vaultItemCustom}
-              onChange={(e) => {
-                setVaultItemOption("OUTRO");
-                setVaultItemCustom(e.target.value);
-              }}
-              placeholder="(Sem itens cadastrados) digite o item..."
-              className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
+              className="input mt-2"
+              value={props.vaultItemCustom}
+              onChange={(e) => props.setVaultItemCustom(e.target.value)}
+              placeholder="Digite o item..."
             />
           )}
         </div>
@@ -92,35 +70,33 @@ export function VaultForm({
           <input
             type="number"
             min={1}
-            value={vaultQty}
-            onChange={(e) => setVaultQty(Number(e.target.value))}
-            className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
+            className="input mt-1"
+            value={props.vaultQty}
+            onChange={(e) => props.setVaultQty(Number(e.target.value))}
           />
         </div>
 
         <div>
           <label className="block text-sm text-white/80">Onde</label>
           <input
-            value={vaultWhere}
-            onChange={(e) => setVaultWhere(e.target.value)}
+            className="input mt-1"
+            value={props.vaultWhere}
+            onChange={(e) => props.setVaultWhere(e.target.value)}
             placeholder="Ex: Porta-malas do Lucena"
-            className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
           />
         </div>
 
         <div>
           <label className="block text-sm text-white/80">Obs</label>
           <input
-            value={vaultObs}
-            onChange={(e) => setVaultObs(e.target.value)}
+            className="input mt-1"
+            value={props.vaultObs}
+            onChange={(e) => props.setVaultObs(e.target.value)}
             placeholder="Ex: Devolver pra ele"
-            className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
           />
         </div>
 
-        <button className="w-full rounded-xl bg-white text-black py-2 font-medium hover:bg-white/90">
-          Registrar no Baú
-        </button>
+        <button className="btn-primary">Registrar no Baú</button>
       </form>
     </section>
   );

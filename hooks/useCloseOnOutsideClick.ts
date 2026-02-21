@@ -2,11 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
-export function useCloseOnOutsideClick<T extends HTMLElement>(
-  open: boolean,
-  setOpen: (v: boolean) => void
-) {
-  const ref = useRef<T | null>(null);
+export function useCloseOnOutsideClick(open: boolean, setOpen: (v: boolean) => void) {
+  const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) return;

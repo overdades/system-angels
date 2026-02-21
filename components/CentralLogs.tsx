@@ -1,8 +1,8 @@
 "use client";
 
-import { NiceSelect } from "@/components/NiceSelect";
-import type { DropOption } from "@/components/NiceSelect";
-import type { VaultLog, Order } from "@/hooks/useClubApp";
+import { NiceSelect } from "@/components/ui/NiceSelect";
+import type { DropOption } from "@/components/ui/NiceSelect";
+import type { VaultLog, Order } from "@/lib/types";
 
 type CentralTab = "TODOS" | "BAU" | "PEDIDOS";
 
@@ -31,29 +31,13 @@ export function CentralLogs(props: {
 
   hideVaultForMe: (id: string) => void;
   hideOrderForMe: (id: string) => void;
-}) {
-  const {
-    centralTab,
-    setCentralTab,
-    centralSearch,
-    setCentralSearch,
-    centralBy,
-    setCentralBy,
-    centralItem,
-    setCentralItem,
-    centralParty,
-    setCentralParty,
-    memberNameOptions,
-    itemFilterOptions,
-    partyFilterOptions,
-    centralVault,
-    centralOrders,
-    hideVaultForMe,
-    hideOrderForMe,
-  } = props;
 
+  isAdminAuthed: boolean;
+  deleteVaultLog: (id: string) => Promise<void>;
+  deleteOrder: (id: string) => Promise<void>;
+}) {
   return (
-    <section className="lg:col-span-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+    <section className="lg:col-span-4 panel p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-lg font-semibold">🔎 Central de Logs</h2>
@@ -67,12 +51,10 @@ export function CentralLogs(props: {
             <button
               key={t}
               type="button"
-              onClick={() => setCentralTab(t)}
+              onClick={() => props.setCentralTab(t)}
               className={[
                 "rounded-xl px-3 py-2 text-sm border transition",
-                centralTab === t
-                  ? "bg-white text-black border-white/20"
-                  : "bg-black/20 border-white/10 hover:bg-white/5",
+                props.centralTab === t ? "chip-active" : "chip",
               ].join(" ")}
             >
               {t === "TODOS" ? "Todos" : t === "BAU" ? "Baú" : "Pedidos"}
@@ -85,19 +67,19 @@ export function CentralLogs(props: {
         <div className="lg:col-span-2">
           <label className="block text-sm text-white/80">Buscar</label>
           <input
-            value={centralSearch}
-            onChange={(e) => setCentralSearch(e.target.value)}
+            value={props.centralSearch}
+            onChange={(e) => props.setCentralSearch(e.target.value)}
             placeholder="Digite item, nome, obs, onde, organização..."
-            className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
+            className="input mt-1"
           />
         </div>
 
         <div>
           <label className="block text-sm text-white/80">Autor</label>
           <NiceSelect<string>
-            value={centralBy}
-            options={memberNameOptions}
-            onChange={(v) => setCentralBy(v)}
+            value={props.centralBy}
+            options={props.memberNameOptions}
+            onChange={props.setCentralBy}
             searchable
             searchPlaceholder="Buscar autor..."
           />
@@ -106,9 +88,9 @@ export function CentralLogs(props: {
         <div>
           <label className="block text-sm text-white/80">Item</label>
           <NiceSelect<string>
-            value={centralItem}
-            options={itemFilterOptions}
-            onChange={(v) => setCentralItem(v)}
+            value={props.centralItem}
+            options={props.itemFilterOptions}
+            onChange={props.setCentralItem}
             searchable
             searchPlaceholder="Buscar item..."
           />
@@ -117,9 +99,9 @@ export function CentralLogs(props: {
         <div>
           <label className="block text-sm text-white/80">“Para” (Pedidos)</label>
           <NiceSelect<string>
-            value={centralParty}
-            options={partyFilterOptions}
-            onChange={(v) => setCentralParty(v)}
+            value={props.centralParty}
+            options={props.partyFilterOptions}
+            onChange={props.setCentralParty}
             searchable
             searchPlaceholder="Buscar destino..."
           />
@@ -127,51 +109,53 @@ export function CentralLogs(props: {
       </div>
 
       <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {(centralTab === "TODOS" || centralTab === "BAU") && (
+        {(props.centralTab === "TODOS" || props.centralTab === "BAU") && (
           <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
             <div className="flex items-center justify-between">
               <div className="font-semibold">📦 Baú</div>
-              <div className="text-xs text-white/60">
-                {centralVault.length} resultados
-              </div>
+              <div className="text-xs text-white/60">{props.centralVault.length} resultados</div>
             </div>
 
             <div className="mt-3 max-h-[380px] overflow-auto space-y-2 pr-1">
-              {centralVault.length === 0 ? (
+              {props.centralVault.length === 0 ? (
                 <div className="text-sm text-white/60">Nada encontrado.</div>
               ) : (
-                centralVault.map((log) => (
-                  <div
-                    key={log.id}
-                    className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
-                  >
+                props.centralVault.map((log) => (
+                  <div key={log.id} className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm">
                     <button
                       type="button"
-                      onClick={() => hideVaultForMe(log.id)}
+                      onClick={() => props.hideVaultForMe(log.id)}
                       title="Ocultar deste perfil"
                       className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
                     >
                       ×
                     </button>
 
+                    {props.isAdminAuthed && (
+                      <button
+                        type="button"
+                        title="Apagar (admin)"
+                        className="absolute left-2 top-2 h-6 px-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs"
+                        onClick={async () => {
+                          const ok = confirm("Apagar esse registro do BAÚ do banco?");
+                          if (!ok) return;
+                          await props.deleteVaultLog(log.id);
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    )}
+
                     <div className="font-medium pr-10">
                       {log.direction} — {log.item} x{log.qty}
                     </div>
 
-                    {log.where_text && (
-                      <div className="text-white/70 mt-1">
-                        Onde: {log.where_text}
-                      </div>
-                    )}
-                    {log.obs && (
-                      <div className="text-white/70 mt-1">Obs: {log.obs}</div>
-                    )}
+                    {log.where_text && <div className="text-white/70 mt-1">Onde: {log.where_text}</div>}
+                    {log.obs && <div className="text-white/70 mt-1">Obs: {log.obs}</div>}
 
                     <div className="mt-2 flex items-end justify-between">
                       <div className="text-white/60">Por: {log.by_text}</div>
-                      <div className="text-white/50 text-xs">
-                        {log.created_when}
-                      </div>
+                      <div className="text-white/50 text-xs">{log.created_when}</div>
                     </div>
                   </div>
                 ))
@@ -180,32 +164,42 @@ export function CentralLogs(props: {
           </div>
         )}
 
-        {(centralTab === "TODOS" || centralTab === "PEDIDOS") && (
+        {(props.centralTab === "TODOS" || props.centralTab === "PEDIDOS") && (
           <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
             <div className="flex items-center justify-between">
               <div className="font-semibold">🧾 Pedidos</div>
-              <div className="text-xs text-white/60">
-                {centralOrders.length} resultados
-              </div>
+              <div className="text-xs text-white/60">{props.centralOrders.length} resultados</div>
             </div>
 
             <div className="mt-3 max-h-[380px] overflow-auto space-y-2 pr-1">
-              {centralOrders.length === 0 ? (
+              {props.centralOrders.length === 0 ? (
                 <div className="text-sm text-white/60">Nada encontrado.</div>
               ) : (
-                centralOrders.map((o) => (
-                  <div
-                    key={o.id}
-                    className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm"
-                  >
+                props.centralOrders.map((o) => (
+                  <div key={o.id} className="relative rounded-xl border border-white/10 bg-black/30 p-3 text-sm">
                     <button
                       type="button"
-                      onClick={() => hideOrderForMe(o.id)}
+                      onClick={() => props.hideOrderForMe(o.id)}
                       title="Ocultar deste perfil"
                       className="absolute right-2 top-2 h-6 w-6 rounded-full border border-red-500/40 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center leading-none"
                     >
                       ×
                     </button>
+
+                    {props.isAdminAuthed && (
+                      <button
+                        type="button"
+                        title="Apagar (admin)"
+                        className="absolute left-2 top-2 h-6 px-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs"
+                        onClick={async () => {
+                          const ok = confirm("Apagar esse PEDIDO do banco?");
+                          if (!ok) return;
+                          await props.deleteOrder(o.id);
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    )}
 
                     <div className="font-medium pr-10">
                       {o.kind} — {o.item} x{o.qty}
@@ -218,15 +212,11 @@ export function CentralLogs(props: {
                       </span>
                     </div>
 
-                    {o.notes && (
-                      <div className="text-white/70 mt-1">{o.notes}</div>
-                    )}
+                    {o.notes && <div className="text-white/70 mt-1">{o.notes}</div>}
 
                     <div className="mt-2 flex items-end justify-between">
                       <div className="text-white/60">Por: {o.by_text}</div>
-                      <div className="text-white/50 text-xs">
-                        {o.created_when}
-                      </div>
+                      <div className="text-white/50 text-xs">{o.created_when}</div>
                     </div>
                   </div>
                 ))

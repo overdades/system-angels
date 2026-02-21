@@ -1,31 +1,13 @@
 "use client";
 
-import { OrderKind } from "@/lib/types";
-import { ItemOption, OrgOption, ORGS, ITEMS } from "@/lib/constants";
-import { NiceSelect } from "@/components/ui/NiceSelect";
+import type { OrderKind } from "@/lib/types";
+import type { ItemOption, OrgOption } from "@/lib/constants";
+import { ITEMS, ORGS } from "@/lib/constants";
 import { ItemDropdown } from "@/components/ui/ItemDropdown";
 import { OrgDropdown } from "@/components/ui/OrgDropdown";
+import { NiceSelect } from "@/components/ui/NiceSelect";
 
-export function OrderForm({
-  orderKind,
-  setOrderKind,
-  orderItemOption,
-  setOrderItemOption,
-  orderItemCustom,
-  setOrderItemCustom,
-  orderQty,
-  setOrderQty,
-  orderPartyMemberId,
-  setOrderPartyMemberId,
-  memberOptions,
-  orderPartyOrgOption,
-  setOrderPartyOrgOption,
-  orderPartyOrgCustom,
-  setOrderPartyOrgCustom,
-  orderNotes,
-  setOrderNotes,
-  onSubmit,
-}: {
+export function OrderForm(props: {
   orderKind: OrderKind;
   setOrderKind: (v: OrderKind) => void;
 
@@ -40,7 +22,6 @@ export function OrderForm({
 
   orderPartyMemberId: number;
   setOrderPartyMemberId: (v: number) => void;
-
   memberOptions: { value: number; label: string }[];
 
   orderPartyOrgOption: OrgOption;
@@ -60,43 +41,33 @@ export function OrderForm({
   ];
 
   return (
-    <section className="lg:col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
+    <section className="panel p-4">
       <h2 className="text-lg font-semibold">🧾 Registrar Pedido</h2>
 
-      <form onSubmit={onSubmit} className="mt-3 grid gap-3">
+      <form onSubmit={props.onSubmit} className="mt-3 grid gap-3">
         <div>
           <label className="block text-sm text-white/80">Tipo</label>
           <NiceSelect<OrderKind>
-            value={orderKind}
+            value={props.orderKind}
             options={orderKindOptions}
-            onChange={(v) => setOrderKind(v)}
+            onChange={props.setOrderKind}
           />
         </div>
 
         <div>
           <label className="block text-sm text-white/80">Item</label>
-
-          {(ITEMS as readonly string[]).length > 0 ? (
-            <div className="mt-1">
-              <ItemDropdown
-                value={orderItemOption}
-                customValue={orderItemCustom}
-                onChange={(opt, custom) => {
-                  setOrderItemOption(opt);
-                  if (opt === "OUTRO") setOrderItemCustom(custom ?? "");
-                  else setOrderItemCustom("");
-                }}
-              />
-            </div>
-          ) : (
+          <ItemDropdown
+            value={props.orderItemOption}
+            setValue={(v) => props.setOrderItemOption(v as ItemOption)}
+            options={[...ITEMS, "OUTRO"]}
+            placeholder="Buscar item..."
+          />
+          {props.orderItemOption === "OUTRO" && (
             <input
-              value={orderItemCustom}
-              onChange={(e) => {
-                setOrderItemOption("OUTRO");
-                setOrderItemCustom(e.target.value);
-              }}
-              placeholder="(Sem itens cadastrados) digite o item..."
-              className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
+              className="input mt-2"
+              value={props.orderItemCustom}
+              onChange={(e) => props.setOrderItemCustom(e.target.value)}
+              placeholder="Digite o item..."
             />
           )}
         </div>
@@ -106,51 +77,55 @@ export function OrderForm({
           <input
             type="number"
             min={1}
-            value={orderQty}
-            onChange={(e) => setOrderQty(Number(e.target.value))}
-            className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
+            className="input mt-1"
+            value={props.orderQty}
+            onChange={(e) => props.setOrderQty(Number(e.target.value))}
           />
         </div>
 
         <div>
           <label className="block text-sm text-white/80">
-            {orderKind === "INTERNO" ? "Membro do clube" : "Organização / Parte"}
+            {props.orderKind === "INTERNO" ? "Membro do clube" : "Organização / Parte"}
           </label>
 
-          {orderKind === "INTERNO" ? (
+          {props.orderKind === "INTERNO" ? (
             <NiceSelect<number>
-              value={orderPartyMemberId}
-              options={memberOptions}
-              onChange={(v) => setOrderPartyMemberId(v)}
+              value={props.orderPartyMemberId}
+              options={props.memberOptions}
+              onChange={props.setOrderPartyMemberId}
               searchable
               searchPlaceholder="Buscar membro..."
             />
           ) : (
-            <OrgDropdown
-              value={orderPartyOrgOption}
-              customValue={orderPartyOrgCustom}
-              onChange={(opt, custom) => {
-                setOrderPartyOrgOption(opt);
-                if (opt === "OUTRO") setOrderPartyOrgCustom(custom ?? "");
-                else setOrderPartyOrgCustom("");
-              }}
-            />
+            <>
+              <OrgDropdown
+                value={props.orderPartyOrgOption}
+                setValue={(v) => props.setOrderPartyOrgOption(v as OrgOption)}
+                options={[...ORGS, "OUTRO"]}
+              />
+              {props.orderPartyOrgOption === "OUTRO" && (
+                <input
+                  className="input mt-2"
+                  value={props.orderPartyOrgCustom}
+                  onChange={(e) => props.setOrderPartyOrgCustom(e.target.value)}
+                  placeholder="Digite o nome da organização..."
+                />
+              )}
+            </>
           )}
         </div>
 
         <div>
           <label className="block text-sm text-white/80">Observações</label>
           <input
-            value={orderNotes}
-            onChange={(e) => setOrderNotes(e.target.value)}
+            className="input mt-1"
+            value={props.orderNotes}
+            onChange={(e) => props.setOrderNotes(e.target.value)}
             placeholder="Ex: Pra amanhã"
-            className="mt-1 w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2"
           />
         </div>
 
-        <button className="w-full rounded-xl bg-white text-black py-2 font-medium hover:bg-white/90">
-          Registrar Pedido
-        </button>
+        <button className="btn-primary">Registrar Pedido</button>
       </form>
     </section>
   );

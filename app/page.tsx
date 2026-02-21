@@ -16,11 +16,12 @@ export default function Home() {
       <div className="relative w-full max-w-6xl rounded-2xl border border-white/15 bg-white/5 p-6 shadow">
         <h1 className="text-2xl font-bold">ANGELS OF CODES</h1>
 
+        {/* logo “cortando” de leve */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <img
             src="/logo-angels.png"
             alt=""
-            className="select-none absolute right-[-120px] top-1/2 -translate-y-1/2 opacity-[0.03] w-[520px] lg:w-[700px]"
+            className="select-none absolute right-[-140px] top-1/2 -translate-y-1/2 opacity-[0.06] w-[520px] lg:w-[740px] rotate-[-8deg]"
           />
         </div>
 
@@ -60,27 +61,32 @@ export default function Home() {
           <div className="mt-6 space-y-6">
             <HeaderBar loggedMember={app.loggedMember} onLogout={app.handleLogout} />
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <CentralLogs
-                centralTab={app.centralTab}
-                setCentralTab={app.setCentralTab}
-                centralSearch={app.centralSearch}
-                setCentralSearch={app.setCentralSearch}
-                centralBy={app.centralBy}
-                setCentralBy={app.setCentralBy}
-                centralItem={app.centralItem}
-                setCentralItem={app.setCentralItem}
-                centralParty={app.centralParty}
-                setCentralParty={app.setCentralParty}
-                memberNameOptions={app.memberNameOptions}
-                itemFilterOptions={app.itemFilterOptions}
-                partyFilterOptions={app.partyFilterOptions}
-                centralVault={app.centralVault}
-                centralOrders={app.centralOrders}
-                hideVaultForMe={app.hideVaultForMe}
-                hideOrderForMe={app.hideOrderForMe}
-              />
+            {/* ✅ CENTRAL EM CIMA */}
+            <CentralLogs
+              centralTab={app.centralTab}
+              setCentralTab={app.setCentralTab}
+              centralSearch={app.centralSearch}
+              setCentralSearch={app.setCentralSearch}
+              centralBy={app.centralBy}
+              setCentralBy={app.setCentralBy}
+              centralItem={app.centralItem}
+              setCentralItem={app.setCentralItem}
+              centralParty={app.centralParty}
+              setCentralParty={app.setCentralParty}
+              memberNameOptions={app.memberNameOptions}
+              itemFilterOptions={app.itemFilterOptions}
+              partyFilterOptions={app.partyFilterOptions}
+              centralVault={app.centralVault}
+              centralOrders={app.centralOrders}
+              hideVaultForMe={app.hideVaultForMe}
+              hideOrderForMe={app.hideOrderForMe}
+              isAdminAuthed={app.isAdminAuthed}
+              deleteVaultLog={app.deleteVaultLog}
+              deleteOrder={app.deleteOrder}
+            />
 
+            {/* ✅ VAULT + ORDER LADO A LADO */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <VaultForm
                 vaultDirection={app.vaultDirection}
                 setVaultDirection={app.setVaultDirection}

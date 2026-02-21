@@ -1,26 +1,42 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --bg1: #0f0f0f;
+  --bg2: #1a1a1a;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: radial-gradient(1200px 600px at 20% 20%, rgba(56, 56, 56, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 90% 20%, rgba(41, 38, 40, 0.12), transparent 55%),
+    radial-gradient(900px 500px at 50% 90%, rgba(26, 26, 26, 0.1), transparent 60%),
+    linear-gradient(180deg, var(--bg1), var(--bg2));
+  color: white;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-[0_10px_40px_rgba(0,0,0,0.35)];
+  }
+
+  .input {
+    @apply w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2 outline-none focus:border-white/30;
+  }
+
+  .btn-primary {
+    @apply w-full rounded-xl bg-white text-black py-2 font-medium hover:bg-white/90 transition;
+  }
+
+  .btn-ghost {
+    @apply rounded-xl border border-white/15 px-4 py-2 hover:bg-white/5 transition;
+  }
+
+  .chip-active {
+    @apply bg-white text-black border-white/20;
+  }
+
+  .chip {
+    @apply bg-black/20 border-white/10 hover:bg-white/5;
+  }
 }

@@ -2,10 +2,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let cached: SupabaseClient | null = null;
 
-/**
- * Singleton do Supabase no browser.
- * Evita "Multiple GoTrueClient instances" e bugs de realtime duplicado.
- */
 export function getSupabase(): SupabaseClient | null {
   if (cached) return cached;
 
@@ -15,12 +11,10 @@ export function getSupabase(): SupabaseClient | null {
   if (!url || !anon) return null;
 
   cached = createClient(url, anon, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
+    auth: { persistSession: false },
   });
 
   return cached;
 }
+
+export const supabase = getSupabase();

@@ -32,7 +32,3 @@ export type Order = {
   notes: string;
   by_text: string;
 };
-
-export type WebhookChannel = "vault" | "orders";
-
-export type CentralTab = "TODOS" | "BAU" | "PEDIDOS";
