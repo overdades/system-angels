@@ -1,7 +1,7 @@
 "use client";
 
 import type { VaultDirection } from "@/lib/types";
-import type { ItemOption } from "@/lib/constants";
+import type { ItemOption, VaultStorePlace } from "@/lib/constants";
 import { ITEMS } from "@/lib/constants";
 import { ItemDropdown } from "@/components/ui/ItemDropdown";
 import { NiceSelect } from "@/components/ui/NiceSelect";
@@ -19,8 +19,13 @@ export function VaultForm(props: {
   vaultQty: number;
   setVaultQty: (v: number) => void;
 
-  vaultWhere: string;
-  setVaultWhere: (v: string) => void;
+  /** ✅ NOVO: dropdown “onde guardar” */
+  vaultStorePlace: VaultStorePlace;
+  setVaultStorePlace: (v: VaultStorePlace) => void;
+
+  /** ✅ NOVO: se Porta-malas, digita o nome */
+  vaultTrunkWho: string;
+  setVaultTrunkWho: (v: string) => void;
 
   vaultObs: string;
   setVaultObs: (v: string) => void;
@@ -30,6 +35,12 @@ export function VaultForm(props: {
   const vaultDirectionOptions = [
     { value: "ENTRADA" as const, label: "Entrada" },
     { value: "SAIDA" as const, label: "Saída" },
+  ];
+
+  const storeOptions = [
+    { value: "BAU_MEMBRO" as const, label: "Baú membro" },
+    { value: "BAU_GERENCIA" as const, label: "Baú gerência" },
+    { value: "PORTA_MALAS" as const, label: "Porta-malas" },
   ];
 
   return (
@@ -76,14 +87,24 @@ export function VaultForm(props: {
           />
         </div>
 
+        {/* ✅ NOVO: onde guardar */}
         <div>
-          <label className="block text-sm text-white/80">Onde</label>
-          <input
-            className="input mt-1"
-            value={props.vaultWhere}
-            onChange={(e) => props.setVaultWhere(e.target.value)}
-            placeholder="Ex: Porta-malas do Lucena"
+          <label className="block text-sm text-white/80">Onde foi armazenado</label>
+
+          <NiceSelect<VaultStorePlace>
+            value={props.vaultStorePlace}
+            options={storeOptions}
+            onChange={props.setVaultStorePlace}
           />
+
+          {props.vaultStorePlace === "PORTA_MALAS" && (
+            <input
+              className="input mt-2"
+              value={props.vaultTrunkWho}
+              onChange={(e) => props.setVaultTrunkWho(e.target.value)}
+              placeholder="Porta-malas de quem? (ex: Lucena)"
+            />
+          )}
         </div>
 
         <div>

@@ -18,6 +18,7 @@ import {
   ORDER_ALLOWED_IDS,
   ORGS,
   OrgOption,
+  VaultStorePlace,
 } from "@/lib/constants";
 import { buildOrderEmbed, buildVaultEmbed, postWebhook } from "@/lib/webhook";
 import { mapOrderRow } from "@/hooks/useOrdersData";
@@ -38,41 +39,50 @@ export function useClubApp() {
   const [loggedMember, setLoggedMember] = useState<Member | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // troca pin (mantive, mas seu login agora é via /api/auth/login)
-  const [mustChangePin, setMustChangePin] = useState(false);
+  // troca pin
   const [changingPin, setChangingPin] = useState(false);
   const [newPin, setNewPin] = useState("");
 
   // forms vault
   const [vaultDirection, setVaultDirection] =
     useState<VaultDirection>("ENTRADA");
-  const [vaultItemOption, setVaultItemOption] =
-    useState<ItemOption>("OUTRO");
+
+  const [vaultItemOption, setVaultItemOption] = useState<ItemOption>("OUTRO");
   const [vaultItemCustom, setVaultItemCustom] = useState("");
+
   const [vaultQty, setVaultQty] = useState<number>(1);
-  const [vaultWhere, setVaultWhere] = useState("");
+
+  /** ✅ NOVO: onde guardar */
+  const [vaultStorePlace, setVaultStorePlace] =
+    useState<VaultStorePlace>("BAU_MEMBRO");
+
+  /** ✅ NOVO: se Porta-malas, “de quem?” */
+  const [vaultTrunkWho, setVaultTrunkWho] = useState("");
+
   const [vaultObs, setVaultObs] = useState("");
 
   // forms order
   const [orderKind, setOrderKind] = useState<OrderKind>("EXTERNO");
-  const [orderItemOption, setOrderItemOption] =
-    useState<ItemOption>("OUTRO");
+  const [orderItemOption, setOrderItemOption] = useState<ItemOption>("OUTRO");
   const [orderItemCustom, setOrderItemCustom] = useState("");
   const [orderQty, setOrderQty] = useState<number>(1);
+
   const [orderPartyOrgOption, setOrderPartyOrgOption] = useState<OrgOption>(
     ORGS[0]
   );
   const [orderPartyOrgCustom, setOrderPartyOrgCustom] = useState("");
+
   const [orderPartyMemberId, setOrderPartyMemberId] = useState<number>(
     BASE_MEMBERS[0]?.id ?? 1
   );
+
   const [orderNotes, setOrderNotes] = useState("");
 
   // data
   const [vaultLogs, setVaultLogs] = useState<VaultLog[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
 
-  // hide per profile
+  // ocultar por perfil
   const [hiddenOrderIds, setHiddenOrderIds] = useState<Set<string>>(new Set());
   const [hiddenVaultIds, setHiddenVaultIds] = useState<Set<string>>(new Set());
 
@@ -118,24 +128,25 @@ export function useClubApp() {
     });
   }
 
-  // sessão via cookie httpOnly
+  // bootstrap: pins custom + sessão
   useEffect(() => {
-    (async () => {
+    const withSaved = BASE_MEMBERS.map((m) => {
+      const raw = localStorage.getItem(`memberPin:${m.id}`);
+      if (!raw) return m;
       try {
-        const res = await fetch("/api/auth/me");
-        const data = await res.json();
-        if (res.ok && data.ok) {
-          setLoggedMember({
-            id: data.member.id,
-            name: data.member.name,
-            pin: "",
-            mustChangePin: false,
-          } as Member);
-        }
+        return JSON.parse(raw) as Member;
       } catch {
-        // ignore
+        return m;
       }
-    })();
+    });
+    setMembers(withSaved);
+
+    const savedMember = localStorage.getItem("loggedMember");
+    if (savedMember) {
+      try {
+        setLoggedMember(JSON.parse(savedMember) as Member);
+      } catch {}
+    }
   }, []);
 
   // hidden sets
@@ -148,20 +159,6 @@ export function useClubApp() {
     const rawVault = localStorage.getItem(hiddenVaultKey(loggedMember.id));
     setHiddenVaultIds(rawVault ? new Set(JSON.parse(rawVault)) : new Set());
   }, [loggedMember]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        const data = await res.json();
-        if (res.ok && data.ok) {
-          setLoggedMember({ id: data.member.id, name: data.member.name } as any);
-          setMustChangePin(!!data.mustChangePin);
-          if (data.mustChangePin) setChangingPin(true);
-        }
-      } catch { }
-    })();
-  }, []);
 
   // loader + realtime
   async function loadFromDb() {
@@ -232,47 +229,42 @@ export function useClubApp() {
     };
   }, [supabase]);
 
-  // login
+  // login / pin change
   const selectedMember = useMemo(
     () => members.find((m) => m.id === memberId) ?? members[0],
     [members, memberId]
   );
 
-  async function handleLogin(e: React.FormEvent) {
+  function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clubPass, memberId, pin }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data.ok) {
-      setError(data.error ?? "Falha no login.");
+    if (clubPass !== CLUB_PASSWORD) {
+      setError("Senha do clube incorreta.");
+      return;
+    }
+    if (pin !== selectedMember.pin) {
+      setError("PIN incorreto para esse membro.");
+      return;
+    }
+    if (selectedMember.mustChangePin) {
+      setChangingPin(true);
       return;
     }
 
-    setLoggedMember({ id: data.member.id, name: data.member.name } as any);
-    setMustChangePin(!!data.mustChangePin);
-
-    if (data.mustChangePin) {
-      setChangingPin(true);
-    }
-
+    setLoggedMember(selectedMember);
+    localStorage.setItem("loggedMember", JSON.stringify(selectedMember));
   }
 
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+  function handleLogout() {
+    localStorage.removeItem("loggedMember");
     setLoggedMember(null);
     setClubPass("");
     setPin("");
     setError(null);
   }
 
-  async function confirmNewPin(e: React.FormEvent) {
+  function confirmNewPin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
@@ -281,20 +273,21 @@ export function useClubApp() {
       return;
     }
 
-    const res = await fetch("/api/auth/change-pin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newPin }),
-    });
+    const updated: Member = {
+      ...selectedMember,
+      pin: newPin.trim(),
+      mustChangePin: false,
+    };
 
-    const data = await res.json();
-    if (!res.ok || !data.ok) {
-      setError(data.error ?? "Erro ao trocar PIN.");
-      return;
-    }
+    localStorage.setItem(`memberPin:${updated.id}`, JSON.stringify(updated));
+    setMembers((prev) =>
+      prev.map((m) => (m.id === updated.id ? updated : m))
+    );
+
+    setLoggedMember(updated);
+    localStorage.setItem("loggedMember", JSON.stringify(updated));
 
     setChangingPin(false);
-    setMustChangePin(false);
     setNewPin("");
   }
 
@@ -302,11 +295,21 @@ export function useClubApp() {
   function resolveItem(option: ItemOption, custom: string) {
     return option === "OUTRO" ? custom.trim() : String(option);
   }
+
   function resolveOrg(option: OrgOption, custom: string) {
     return option === "OUTRO" ? custom.trim() : option;
   }
 
-  // create
+  /** ✅ NOVO: monta onde guardar em texto final */
+  function buildWhereText(place: VaultStorePlace, who: string) {
+    if (place === "BAU_MEMBRO") return "Baú membro";
+    if (place === "BAU_GERENCIA") return "Baú gerência";
+    // porta malas
+    const clean = who.trim();
+    return clean ? `Porta-malas do ${clean}` : "Porta-malas";
+  }
+
+  // create vault
   async function addVaultLog(e: React.FormEvent) {
     e.preventDefault();
     if (!loggedMember) return;
@@ -314,13 +317,18 @@ export function useClubApp() {
     const finalItem = resolveItem(vaultItemOption, vaultItemCustom);
     if (!finalItem) return;
 
+    if (vaultStorePlace === "PORTA_MALAS" && !vaultTrunkWho.trim()) {
+      alert("Digite de quem é o porta-malas.");
+      return;
+    }
+
     const log: VaultLog = {
       id: crypto.randomUUID(),
       created_when: nowBR(),
       direction: vaultDirection,
       item: finalItem,
       qty: vaultQty,
-      where_text: vaultWhere.trim(),
+      where_text: buildWhereText(vaultStorePlace, vaultTrunkWho),
       obs: vaultObs.trim(),
       by_text: loggedMember.name,
     };
@@ -339,13 +347,18 @@ export function useClubApp() {
 
     await postWebhook("vault", buildVaultEmbed(log));
 
+    // reset
     setVaultItemOption("OUTRO");
     setVaultItemCustom("");
     setVaultQty(1);
-    setVaultWhere("");
+
+    setVaultStorePlace("BAU_MEMBRO");
+    setVaultTrunkWho("");
+
     setVaultObs("");
   }
 
+  // create order
   async function addOrder(e: React.FormEvent) {
     e.preventDefault();
     if (!loggedMember) return;
@@ -411,43 +424,23 @@ export function useClubApp() {
     }
   }
 
-  // ✅ delete (admin) — via API (blindado)
+  // delete (admin)
   async function deleteVaultLog(id: string) {
+    if (!supabase) throw new Error("Supabase não configurado.");
     if (!isAdminAuthed) throw new Error("Sem permissão.");
 
-    // otimista
     setVaultLogs((prev) => prev.filter((x) => x.id !== id));
-
-    const res = await fetch("/api/admin/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ table: "vault_logs", id }),
-    });
-
-    const data = await res.json();
-    if (!res.ok || !data.ok) {
-      // rollback simples: recarrega
-      await loadFromDb();
-      throw new Error(data.error ?? "Erro ao apagar.");
-    }
+    const { error } = await supabase.from("vault_logs").delete().eq("id", id);
+    if (error) throw error;
   }
 
   async function deleteOrder(id: string) {
+    if (!supabase) throw new Error("Supabase não configurado.");
     if (!isAdminAuthed) throw new Error("Sem permissão.");
 
     setOrders((prev) => prev.filter((x) => x.id !== id));
-
-    const res = await fetch("/api/admin/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ table: "orders", id }),
-    });
-
-    const data = await res.json();
-    if (!res.ok || !data.ok) {
-      await loadFromDb();
-      throw new Error(data.error ?? "Erro ao apagar.");
-    }
+    const { error } = await supabase.from("orders").delete().eq("id", id);
+    if (error) throw error;
   }
 
   // derived
@@ -514,6 +507,7 @@ export function useClubApp() {
   return {
     supabase,
 
+    // auth
     clubPass,
     setClubPass,
     memberId,
@@ -522,19 +516,17 @@ export function useClubApp() {
     setPin,
     loggedMember,
     error,
-
     changingPin,
     setChangingPin,
     newPin,
     setNewPin,
     selectedMember,
-    mustChangePin,
-    setMustChangePin,
 
     handleLogin,
     handleLogout,
     confirmNewPin,
 
+    // forms vault
     vaultDirection,
     setVaultDirection,
     vaultItemOption,
@@ -543,12 +535,17 @@ export function useClubApp() {
     setVaultItemCustom,
     vaultQty,
     setVaultQty,
-    vaultWhere,
-    setVaultWhere,
+
+    vaultStorePlace,
+    setVaultStorePlace,
+    vaultTrunkWho,
+    setVaultTrunkWho,
+
     vaultObs,
     setVaultObs,
     addVaultLog,
 
+    // forms order
     orderKind,
     setOrderKind,
     orderItemOption,
@@ -567,6 +564,7 @@ export function useClubApp() {
     setOrderNotes,
     addOrder,
 
+    // data / lists
     members,
     memberOptions,
     memberNameOptions,
@@ -589,6 +587,7 @@ export function useClubApp() {
     hideVaultForMe,
     hideOrderForMe,
 
+    // admin
     isAdminAuthed,
     deleteVaultLog,
     deleteOrder,

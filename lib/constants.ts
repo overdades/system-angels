@@ -35,7 +35,7 @@ export const BASE_MEMBERS: Member[] = [
 export const ORDER_ALLOWED_IDS = new Set<number>([1, 2, 20]);
 
 // admins do site (podem deletar registros no banco)
-export const ADMIN_IDS = new Set<number>([1, 2, 20]); // <- coloque aqui os IDs admin
+export const ADMIN_IDS = new Set<number>([1, 2]); // <- coloque aqui os IDs admin
 
 export const ORGS = [
   "Marabunta",
@@ -80,3 +80,12 @@ export const ITEMS = [
 ] as const;
 
 export type ItemOption = (typeof ITEMS)[number] | "OUTRO";
+
+/** ✅ NOVO: locais para guardar (Baú) */
+export const VAULT_STORE_PLACES = [
+  "BAU_MEMBRO",
+  "BAU_GERENCIA",
+  "PORTA_MALAS",
+] as const;
+
+export type VaultStorePlace = (typeof VAULT_STORE_PLACES)[number];

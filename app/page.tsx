@@ -59,9 +59,13 @@ export default function Home() {
           />
         ) : app.loggedMember ? (
           <div className="mt-6 space-y-6">
-            <HeaderBar loggedMember={app.loggedMember} onLogout={app.handleLogout} />
+            <HeaderBar
+              loggedMember={app.loggedMember}
+              onLogout={app.handleLogout}
+              isAdminAuthed={app.isAdminAuthed}
+            />
 
-            {/* ✅ CENTRAL EM CIMA */}
+            {/* CENTRAL EM CIMA */}
             <CentralLogs
               centralTab={app.centralTab}
               setCentralTab={app.setCentralTab}
@@ -85,7 +89,7 @@ export default function Home() {
               deleteOrder={app.deleteOrder}
             />
 
-            {/* ✅ VAULT + ORDER LADO A LADO */}
+            {/* VAULT + ORDER LADO A LADO */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <VaultForm
                 vaultDirection={app.vaultDirection}
@@ -96,8 +100,10 @@ export default function Home() {
                 setVaultItemCustom={app.setVaultItemCustom}
                 vaultQty={app.vaultQty}
                 setVaultQty={app.setVaultQty}
-                vaultWhere={app.vaultWhere}
-                setVaultWhere={app.setVaultWhere}
+                vaultStorePlace={app.vaultStorePlace}
+                setVaultStorePlace={app.setVaultStorePlace}
+                vaultTrunkWho={app.vaultTrunkWho}
+                setVaultTrunkWho={app.setVaultTrunkWho}
                 vaultObs={app.vaultObs}
                 setVaultObs={app.setVaultObs}
                 onSubmit={app.addVaultLog}

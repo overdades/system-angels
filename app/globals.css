@@ -1,42 +1,72 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 :root {
-  --bg1: #0f0f0f;
-  --bg2: #1a1a1a;
+  --bg0: #05040a;
+  --bg1: #0a0610;
+  --red1: 220, 38, 38;   /* red-600-ish */
+  --red2: 185, 28, 28;   /* red-700-ish */
 }
 
 body {
-  background: radial-gradient(1200px 600px at 20% 20%, rgba(56, 56, 56, 0.18), transparent 60%),
-    radial-gradient(900px 500px at 90% 20%, rgba(41, 38, 40, 0.12), transparent 55%),
-    radial-gradient(900px 500px at 50% 90%, rgba(26, 26, 26, 0.1), transparent 60%),
-    linear-gradient(180deg, var(--bg1), var(--bg2));
+  min-height: 100vh;
   color: white;
+  background:
+    radial-gradient(1200px 700px at 70% 78%, rgba(var(--red1), 0.34), transparent 58%),
+    radial-gradient(900px 600px at 22% 32%, rgba(var(--red2), 0.22), transparent 60%),
+    radial-gradient(700px 500px at 85% 28%, rgba(var(--red2), 0.18), transparent 62%),
+    linear-gradient(180deg, var(--bg0), var(--bg1));
+  position: relative;
+  overflow-x: hidden;
 }
 
-@layer components {
-  .panel {
-    @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-[0_10px_40px_rgba(0,0,0,0.35)];
-  }
+/* vinheta (bordas mais escuras) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 85% at 50% 50%,
+      transparent 0%,
+      rgba(0,0,0,0.25) 45%,
+      rgba(0,0,0,0.65) 78%,
+      rgba(0,0,0,0.85) 100%);
+  z-index: 0;
+}
 
-  .input {
-    @apply w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2 outline-none focus:border-white/30;
-  }
+/* grain/noise por cima */
+body::after {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  filter: contrast(120%) brightness(105%);
 
-  .btn-primary {
-    @apply w-full rounded-xl bg-white text-black py-2 font-medium hover:bg-white/90 transition;
-  }
+  /* ruído via SVG embutido (não precisa arquivo) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  background-repeat: repeat;
 
-  .btn-ghost {
-    @apply rounded-xl border border-white/15 px-4 py-2 hover:bg-white/5 transition;
-  }
+  /* movimento leve pra parecer “vivo” (opcional) */
+  animation: grainShift 7s steps(6) infinite;
+}
 
-  .chip-active {
-    @apply bg-white text-black border-white/20;
-  }
+@keyframes grainShift {
+  0% { transform: translate3d(0,0,0); }
+  10% { transform: translate3d(-2%, -3%, 0); }
+  20% { transform: translate3d(-4%, 2%, 0); }
+  30% { transform: translate3d(3%, -4%, 0); }
+  40% { transform: translate3d(5%, 1%, 0); }
+  50% { transform: translate3d(-3%, 4%, 0); }
+  60% { transform: translate3d(-5%, 0%, 0); }
+  70% { transform: translate3d(2%, 5%, 0); }
+  80% { transform: translate3d(4%, -2%, 0); }
+  90% { transform: translate3d(-1%, -5%, 0); }
+  100% { transform: translate3d(0,0,0); }
+}
 
-  .chip {
-    @apply bg-black/20 border-white/10 hover:bg-white/5;
-  }
+/* importante: seu app fica acima do fundo */
+body > * {
+  position: relative;
+  z-index: 2;
 }
